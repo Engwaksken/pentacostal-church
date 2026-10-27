@@ -22,3 +22,4 @@ Reports use the configured site name and logo in printable report output and PDF
 ## Security
 
 Do not commit database credentials, `.env` files, logs, or user-uploaded files. Set database credentials through the hosting environment before deploying.
+# pentacostal-church
