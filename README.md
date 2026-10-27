@@ -1,6 +1,13 @@
-# Rongoro COU Church Management System
+# Pentecostal Church Management System
 
-Church administration and finance application built with PHP and MySQL.
+A PHP and MySQL application for managing church administration, finances, members, and assets.
+
+## Features
+
+- Member records and church administration
+- Income, contributions, expenses, and financial reports
+- Asset management for recording and tracking church property
+- Church services, programs, announcements, and related records
 
 ## Requirements
 
@@ -22,4 +29,3 @@ Reports use the configured site name and logo in printable report output and PDF
 ## Security
 
 Do not commit database credentials, `.env` files, logs, or user-uploaded files. Set database credentials through the hosting environment before deploying.
-# pentacostal-church
