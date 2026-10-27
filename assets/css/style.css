@@ -69,7 +69,7 @@ body.cms-modal-open { overflow: hidden !important; }
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
-  background: linear-gradient(175deg, var(--primary-dk) 0%, var(--primary) 55%, #5a2aaa 100%);
+  background: var(--primary-dk);
   position: fixed;
   top: 0; left: 0;
   height: 100vh;
