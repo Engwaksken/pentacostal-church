@@ -165,30 +165,6 @@ function bm_recipients(mysqli $conn, string $group, int $zoneId = 0, int $depart
                                      ORDER BY m.full_name");
     }
 
-    if ($group === 'mothers_union') {
-        if (bm_table_exists($conn, 'mothers_union') && bm_col_exists($conn, 'mothers_union', 'member_id')) {
-            return bm_fetch_all($conn, "SELECT m.full_name AS name,
-                                                m.email, m.phone, 'Mothers Union' AS group_name
-                                         FROM mothers_union u
-                                         JOIN members m ON m.id = u.member_id
-                                         WHERE COALESCE(u.status,'Active')='Active'
-                                         ORDER BY m.full_name");
-        }
-        return bm_members($conn, 'Mothers Union', "LOWER(COALESCE(m.gender,'')) IN ('female','f')");
-    }
-
-    if ($group === 'fathers_union') {
-        if (bm_table_exists($conn, 'fathers_union') && bm_col_exists($conn, 'fathers_union', 'member_id')) {
-            return bm_fetch_all($conn, "SELECT m.full_name AS name,
-                                                m.email, m.phone, 'Fathers Union' AS group_name
-                                         FROM fathers_union u
-                                         JOIN members m ON m.id = u.member_id
-                                         WHERE COALESCE(u.status,'Active')='Active'
-                                         ORDER BY m.full_name");
-        }
-        return bm_members($conn, 'Fathers Union', "LOWER(COALESCE(m.gender,'')) IN ('male','m')");
-    }
-
     if ($group === 'sunday_school_teachers') {
         if (!bm_table_exists($conn, 'sunday_school_classes') || !bm_table_exists($conn, 'members') || !bm_col_exists($conn, 'sunday_school_classes', 'teacher_id')) return [];
         return bm_fetch_all($conn, "SELECT DISTINCT m.full_name AS name,

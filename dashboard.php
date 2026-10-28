@@ -134,8 +134,6 @@ $total_members   = numRows("SELECT id FROM members WHERE status='Active'");
 $total_youth     = numRows("SELECT id FROM youth WHERE status='Active'");
 $total_baptisms  = numRows("SELECT id FROM baptisms");
 $total_ss        = numRows("SELECT id FROM sunday_school_pupils WHERE status='Active'");
-$fu_count        = numRows("SELECT id FROM fathers_union WHERE status='Active'");
-$mu_count        = numRows("SELECT id FROM mothers_union WHERE status='Active'");
 $recent_members = mysqli_query($conn,"SELECT * FROM members ORDER BY created_at DESC LIMIT 6");
 require_once 'includes/member-content-functions.php';
 $dailyVerse = mc_dashboard_verses($conn, 1)[0] ?? null;
@@ -145,7 +143,7 @@ include 'includes/sidebar.php';
 <div class="main-content"><?php include 'includes/topbar.php'; ?><div class="content-area"><?= showFlash(); ?>
 <div style="background:linear-gradient(135deg,var(--primary),var(--primary-lt));border-radius:12px;color:#fff;padding:18px 24px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;"><div><h4 style="margin:0;font-weight:700;">Welcome back, <?= h(explode(' ', $_SESSION['full_name'] ?? 'Admin')[0]) ?></h4><small><?= date('l, d F Y') ?></small><?php if ($dailyVerse): ?><blockquote style="margin:10px 0 0;padding-left:12px;border-left:3px solid rgba(255,255,255,.5);font-style:italic;white-space:pre-wrap;max-width:720px;"><?= h((string)$dailyVerse['verse_text']) ?><footer style="margin-top:4px;font-style:normal;font-weight:700;font-size:13px;"><?= h((string)$dailyVerse['reference']) ?> <span style="font-weight:400;opacity:.8;">(<?= h((string)$dailyVerse['translation']) ?>)</span></footer></blockquote><?php endif; ?></div><i class="fas fa-church" style="font-size:42px;opacity:.25;"></i></div>
 <div class="dashboard-stat-grid">
-<?php foreach ([[$total_members,'Members','fa-users','var(--primary)'],[$total_youth,'Youth','fa-user-friends','#6f42c1'],[$total_baptisms,'Baptisms','fa-water','#007bff'],[$total_ss,'Pupils','fa-child','#17a2b8'],[$fu_count,'Fathers','fa-male','#20c997'],[$mu_count,'Mothers','fa-female','#e83e8c']] as $stat): ?>
+<?php foreach ([[$total_members,'Members','fa-users','var(--primary)'],[$total_youth,'Youth','fa-user-friends','#6f42c1'],[$total_baptisms,'Baptisms','fa-water','#007bff'],[$total_ss,'Pupils','fa-child','#17a2b8']] as $stat): ?>
 <div class="stat-card"><div class="stat-icon"><i class="fas <?= h($stat[2]) ?>"></i></div><div><div class="stat-number"><?= (int)$stat[0] ?></div><div class="stat-label"><?= h($stat[1]) ?></div></div></div>
 <?php endforeach; ?></div>
 <div class="card"><div class="card-header d-flex justify-content-between align-items-center"><span><i class="fas fa-users"></i> Recent Members</span><a href="<?= BASE_URL ?>members/index.php" class="btn btn-sm btn-primary"><i class="fas fa-user-plus"></i> Add</a></div><div class="card-body p-0"><table class="table table-sm mb-0"><tbody><?php while($m=mysqli_fetch_assoc($recent_members)): ?><tr><td style="width:50px"><span class="avatar-sm"><?= h(strtoupper(substr(trim((string)$m['full_name']),0,1))) ?></span></td><td><strong><?= h((string)$m['full_name']) ?></strong><br><small class="text-muted"><?= h((string)$m['member_no']) ?></small></td><td><small class="text-muted"><?= h((string)($m['department']??'')) ?></small></td></tr><?php endwhile; ?></tbody></table></div><div class="card-footer"><a href="<?= BASE_URL ?>members/">View all members <i class="fas fa-arrow-right"></i></a></div></div>

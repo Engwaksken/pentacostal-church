@@ -93,10 +93,6 @@ $directoryTitles = [
 
     'departments'       => 'Departments',
 
-    'fathers_union'     => "Fathers' Union",
-
-    'mothers_union'     => "Mothers' Union",
-
 
     /* --------------------------------------------------------
      * Finance & Giving
@@ -335,10 +331,6 @@ $queryTitles = [
         'zones'       => 'Church Zones',
 
         'departments' => 'Departments',
-
-        'fathers'     => "Fathers' Union",
-
-        'mothers'     => "Mothers' Union",
     ],
 
 

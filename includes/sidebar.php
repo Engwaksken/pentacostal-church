@@ -241,52 +241,6 @@ if (!function_exists(
 
 
 /* ============================================================
- * MEMBER UNION CHECK
- * ============================================================ */
-
-if (!function_exists(
-    'sidebar_member_union_status'
-)) {
-
-    function sidebar_member_union_status(
-        mysqli $conn,
-        string $union,
-        int $memberId
-    ): bool {
-
-        if ($memberId <= 0) {
-            return false;
-        }
-
-
-        if (
-            function_exists(
-                'member_union_status'
-            )
-        ) {
-
-            try {
-
-                return (bool)
-                    member_union_status(
-                        $conn,
-                        $union,
-                        $memberId
-                    );
-
-            } catch (Throwable $e) {
-
-                return false;
-            }
-        }
-
-
-        return false;
-    }
-}
-
-
-/* ============================================================
  * PERMISSION CHECK
  * ============================================================ */
 
@@ -1004,83 +958,6 @@ $memberId =
 
 
         <!-- ==================================================
-             MEMBER UNIONS
-             ================================================== -->
-
-        <?php
-
-        $showFathersUnion =
-            isset($conn)
-            &&
-            $conn instanceof mysqli
-            &&
-            sidebar_member_union_status(
-                $conn,
-                'fathers_union',
-                $memberId
-            );
-
-
-        $showMothersUnion =
-            isset($conn)
-            &&
-            $conn instanceof mysqli
-            &&
-            sidebar_member_union_status(
-                $conn,
-                'mothers_union',
-                $memberId
-            );
-
-        ?>
-
-
-        <?php if ($showFathersUnion): ?>
-
-            <?php
-
-            navLink(
-                $sidebarBaseUrl .
-                'member/church.php?tab=fathers',
-                'fa-male',
-                "Fathers' Union",
-                $dir,
-                $cur,
-                'church.php',
-                'member.church.view',
-                'tab',
-                'fathers'
-            );
-
-            ?>
-
-        <?php endif; ?>
-
-
-        <?php if ($showMothersUnion): ?>
-
-            <?php
-
-            navLink(
-                $sidebarBaseUrl .
-                'member/church.php?tab=mothers',
-                'fa-female',
-                "Mothers' Union",
-                $dir,
-                $cur,
-                'church.php',
-                'member.church.view',
-                'tab',
-                'mothers'
-            );
-
-            ?>
-
-        <?php endif; ?>
-
-
-
-        <!-- ==================================================
              CHURCH PROGRAMS
              ================================================== -->
 
@@ -1616,28 +1493,6 @@ $memberId =
         );
 
 
-        navLink(
-            $sidebarBaseUrl .
-            'fathers_union/',
-            'fa-male',
-            "Fathers' Union",
-            $dir,
-            $cur,
-            'fathers_union',
-            'fathers_union.view'
-        );
-
-
-        navLink(
-            $sidebarBaseUrl .
-            'mothers_union/',
-            'fa-female',
-            "Mothers' Union",
-            $dir,
-            $cur,
-            'mothers_union',
-            'mothers_union.view'
-        );
 
         ?>
 

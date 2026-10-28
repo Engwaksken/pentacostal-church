@@ -103,7 +103,7 @@ if (bm_table_exists($conn, 'departments') && bm_table_exists($conn, 'department_
         <div class="page-header">
             <div>
                 <h2><i class="fas fa-paper-plane text-primary"></i> Bulk Email & SMS</h2>
-                <p>Send announcements to members, zones, departments, youth, unions, teachers, and parents.</p>
+                <p>Send announcements to members, zones, departments, youth, teachers, and parents.</p>
             </div>
         </div>
 
@@ -166,8 +166,6 @@ if (bm_table_exists($conn, 'departments') && bm_table_exists($conn, 'department_
                                     <option value="zone">By Church Zone</option>
                                     <option value="department">By Department</option>
                                     <option value="youth">Youth</option>
-                                    <option value="mothers_union">Mothers Union</option>
-                                    <option value="fathers_union">Fathers Union</option>
                                     <option value="sunday_school_teachers">Sunday School Teachers</option>
                                     <option value="sunday_school_parents">Sunday School Children Parents</option>
                                 </select>

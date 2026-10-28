@@ -67,8 +67,6 @@ $inc = [
     'Contributions' => sumBetween($conn, 'contributions', 'amount', 'contributed_on', $from, $to),
     'Pledge Receipts' => sumBetween($conn, 'pledge_payments', 'amount', 'paid_on', $from, $to),
     'Fundraising Collections' => sumBetween($conn, 'fundraising_collections', 'amount', 'collection_date', $from, $to),
-    "Fathers' Union Subscriptions" => sumBetween($conn, 'fathers_union', 'subscription', 'date_joined', $from, $to),
-    "Mothers' Union Subscriptions" => sumBetween($conn, 'mothers_union', 'subscription', 'date_joined', $from, $to),
 ];
 
 $total_income = array_sum($inc);

@@ -58,8 +58,6 @@ function genNo($prefix) {
         UNION SELECT id FROM pledges WHERE pledge_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM fundraising WHERE campaign_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM fundraising_collections WHERE receipt_no LIKE '$prefix-$y-%'
-        UNION SELECT id FROM fathers_union WHERE fu_no LIKE '$prefix-$y-%'
-        UNION SELECT id FROM mothers_union WHERE mu_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM projects WHERE project_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM events WHERE id LIKE '$prefix-$y-%'
     ) x"));

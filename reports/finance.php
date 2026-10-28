@@ -94,10 +94,8 @@ $inc_thanksgiving  = getSum($conn, 'thanksgiving', 'amount', 'thanksgiving_date'
 $inc_contributions = getSum($conn, 'contributions', 'amount', 'contributed_on', $from, $to);
 $inc_pledges       = getSum($conn, 'pledge_payments', 'amount', 'paid_on', $from, $to);
 $inc_fundraising   = getSum($conn, 'fundraising_collections', 'amount', 'collection_date', $from, $to);
-$inc_fu_subs       = getSum($conn, 'fathers_union', 'subscription', 'date_joined', $from, $to);
-$inc_mu_subs       = getSum($conn, 'mothers_union', 'subscription', 'date_joined', $from, $to);
 
-$total_income = $inc_offertory + $inc_tithe + $inc_thanksgiving + $inc_contributions + $inc_pledges + $inc_fundraising + $inc_fu_subs + $inc_mu_subs;
+$total_income = $inc_offertory + $inc_tithe + $inc_thanksgiving + $inc_contributions + $inc_pledges + $inc_fundraising;
 
 $conn->query("CREATE TABLE IF NOT EXISTS expenses (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, expense_date DATE NOT NULL, category VARCHAR(120) NOT NULL, description VARCHAR(255) NOT NULL, amount DECIMAL(14,2) NOT NULL, paid_to VARCHAR(150) DEFAULT NULL, payment_method VARCHAR(60) DEFAULT NULL, reference_no VARCHAR(100) DEFAULT NULL, notes TEXT DEFAULT NULL, created_by INT DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_expense_date (expense_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 $total_expenditure = getSum($conn, 'expenses', 'amount', 'expense_date', $from, $to);
@@ -151,8 +149,6 @@ $income_lines = [
     ['Contributions', $inc_contributions, '#28a745', 'fa-hand-holding-usd'],
     ['Pledge Payments', $inc_pledges, '#20c997', 'fa-handshake'],
     ['Fundraising', $inc_fundraising, '#d4a017', 'fa-bullhorn'],
-    ["Fathers' Union Subs", $inc_fu_subs, '#17a2b8', 'fa-male'],
-    ["Mothers' Union Subs", $inc_mu_subs, '#e83e8c', 'fa-female'],
 ];
 
 $trend_labels = array_column($trend, 'label');
