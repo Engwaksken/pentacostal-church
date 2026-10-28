@@ -251,6 +251,7 @@ $permissions = [];
 $permissionResult = $conn->query(
     'SELECT id, permission_key, permission_name, module_name
      FROM permissions
+     WHERE permission_key NOT LIKE "birds.%"
      ORDER BY module_name, permission_name'
 );
 

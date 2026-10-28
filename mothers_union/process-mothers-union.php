@@ -287,7 +287,7 @@ function send_mu_payment_confirmation(mysqli $conn, int $paymentId): array
                     <tr><td style='padding:10px;border:1px solid #e5e7eb;background:#fafafa;'><strong>Method</strong></td><td style='padding:10px;border:1px solid #e5e7eb;'>{$methodH}</td></tr>
                 </table>
                 <p>Thank you for supporting Mothers' Union.</p>
-                <p style='margin-bottom:0;'>Blessings,<br><strong>Rongoro COU Church</strong></p>
+                <p style='margin-bottom:0;'>Blessings,<br><strong>" . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . "</strong></p>
             </div>
         </div>";
         $text = "Dear {$name},\nWe have received your Mothers' Union payment.\nReceipt: {$receiptNo}\nAmount: UGX {$amtFmt}\nDate: {$date}\nMethod: {$method}\nThank you.";
@@ -296,7 +296,7 @@ function send_mu_payment_confirmation(mysqli $conn, int $paymentId): array
 
     $smsSent = false;
     if (!empty($p['phone'])) {
-        $msg = "Rongoro COU: Mothers' Union payment received. Receipt {$receiptNo}, Amount UGX " . number_format($amount) . ", Date {$date}. Thank you.";
+        $msg = APP_NAME . ": Mothers' Union payment received. Receipt {$receiptNo}, Amount UGX " . number_format($amount) . ", Date {$date}. Thank you.";
         $smsSent = send_sms_message($conn, (string)$p['phone'], $msg);
     }
 
@@ -479,7 +479,7 @@ function mu_build_pdf(array $members, string $statusFilter): string
   </thead>
   <tbody>' . $rows . '</tbody>
 </table>
-<div class="footer">Rongoro COU Church &mdash; Mothers\' Union Register &mdash; ' . $genDate . '</div>
+<div class="footer">' . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . ' &mdash; Mothers\' Union Register &mdash; ' . $genDate . '</div>
 </body>
 </html>';
 }

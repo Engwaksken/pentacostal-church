@@ -106,7 +106,7 @@ if (empty($_SESSION['csrf_token'])) {
 $csrfToken = (string)$_SESSION['csrf_token'];
 
 $settings = [
-    'site_name'        => st_value($conn, 'site_name', 'Rongoro COU'),
+    'site_name'        => st_value($conn, 'site_name', APP_NAME),
     'site_subtitle'    => st_value($conn, 'site_subtitle', 'Church Management System'),
     'site_logo'        => st_value($conn, 'site_logo', ''),
     'site_favicon'     => st_value($conn, 'site_favicon', ''),

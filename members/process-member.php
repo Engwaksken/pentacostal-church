@@ -253,7 +253,7 @@ function send_registration_email(mysqli $conn, string $email, string $fullName, 
     if (!function_exists('sendMemberRegistrationConfirmation'))         return false;
     return sendMemberRegistrationConfirmation(
         $conn, $email, $fullName,
-        $memberNo, $joinedDate, 'Rongoro COU Church'
+        $memberNo, $joinedDate, APP_NAME
     );
 }
 
@@ -536,7 +536,7 @@ function build_pdf_html(array $members, string $search, string $status): string
   </thead>
   <tbody>' . $rows . '</tbody>
 </table>
-<div class="footer">Rongoro COU Church &mdash; Members Register &mdash; ' . $genDate . '</div>
+<div class="footer">' . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . ' &mdash; Members Register &mdash; ' . $genDate . '</div>
 </body>
 </html>';
 }

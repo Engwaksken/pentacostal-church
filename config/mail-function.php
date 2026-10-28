@@ -133,7 +133,7 @@ if (!function_exists('sendSystemEmail')) {
 }
 
 if (!function_exists('systemEmailTemplate')) {
-    function systemEmailTemplate(string $title, string $bodyHtml, string $siteName = 'Rongoro COU Church'): string
+    function systemEmailTemplate(string $title, string $bodyHtml, string $siteName = APP_NAME): string
     {
         $safeTitle = mail_h($title);
         $safeSite = mail_h($siteName);
@@ -160,7 +160,7 @@ if (!function_exists('sendMemberRegistrationConfirmation')) {
         string $memberName,
         string $memberNo = '',
         string $joinedDate = '',
-        string $siteName = 'Rongoro COU Church'
+        string $siteName = APP_NAME
     ): bool {
         if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
             return false;
@@ -218,7 +218,7 @@ if (!function_exists('sendSimpleNotificationEmail')) {
         string $toName,
         string $subject,
         string $message,
-        string $siteName = 'Rongoro COU Church'
+        string $siteName = APP_NAME
     ): bool {
         if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
             return false;

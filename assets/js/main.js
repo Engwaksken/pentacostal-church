@@ -232,19 +232,6 @@
                 });
             });
         }
-
-        /* Auto-advance expected-return-date by 1 year from allocation date */
-        const allocDate  = $('#allocation_date');
-        const returnDate = $('#expected_return_date');
-        if (allocDate && returnDate && !allocDate.dataset.bound) {
-            allocDate.dataset.bound = '1';
-            allocDate.addEventListener('change', function () {
-                if (!this.value) return;
-                const d = new Date(this.value);
-                d.setFullYear(d.getFullYear() + 1);
-                returnDate.value = d.toISOString().split('T')[0];
-            });
-        }
     }
 
 
@@ -272,17 +259,15 @@
             setText('#yrStatInactive', items.filter(x => (x.status || 'Active') !== 'Active').length);
             setText('#yrStatMale',     items.filter(x => ['male','m'].includes(String(x.gender || '').toLowerCase())).length);
             setText('#yrStatFemale',   items.filter(x => ['female','f'].includes(String(x.gender || '').toLowerCase())).length);
-            setText('#yrStatBirds',    items.filter(x => Number(x.active_birds || 0) > 0).length);
         }
 
         function renderTable(items) {
             if (!items.length) {
-                tableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:24px">No youth records found.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding:24px">No youth records found.</td></tr>';
                 return;
             }
             tableBody.innerHTML = items.map((y, i) => {
                 const name      = (y.full_name || `${y.first_name || ''} ${y.last_name || ''}`.trim()) || '—';
-                const hasBird   = Number(y.active_birds || 0) > 0;
                 const status    = y.status || 'Active';
                 return `<tr>
                     <td>${i + 1}</td>
@@ -291,15 +276,11 @@
                     <td>${escHtml(y.gender || '—')}</td>
                     <td>${escHtml(y.phone  || '—')}</td>
                     <td>${escHtml(y.education_level || '—')}</td>
-                    <td>${hasBird
-                        ? '<span class="badge badge-success"><i class="fa fa-feather-alt"></i> Has Bird</span>'
-                        : '<span class="badge badge-secondary">No Bird</span>'}</td>
                     <td>${badge(status, status === 'Active' ? 'badge-success' : 'badge-secondary')}</td>
                     <td>
                         <div class="table-action">
                             <button type="button" class="btn btn-sm btn-info    btn-icon" data-yr-action="view"     data-id="${+y.id}" title="View"><i class="fa fa-eye"></i></button>
                             <button type="button" class="btn btn-sm btn-primary btn-icon" data-yr-action="edit"     data-id="${+y.id}" title="Edit"><i class="fa fa-edit"></i></button>
-                            <button type="button" class="btn btn-sm btn-accent  btn-icon" data-yr-action="allocate" data-id="${+y.id}" data-name="${escHtml(name)}" title="Allocate Bird"><i class="fa fa-feather-alt"></i></button>
                             <button type="button" class="btn btn-sm btn-danger  btn-icon" data-yr-action="delete"   data-id="${+y.id}" data-name="${escHtml(name)}" title="Delete"><i class="fa fa-trash"></i></button>
                         </div>
                     </td>
@@ -383,20 +364,6 @@
                 `<div class="detail-item"><b>${escHtml(l)}</b><span>${escHtml(v || '—')}</span></div>`
             ).join('');
 
-            const allocRows = $('#yrAllocRows');
-            if (allocRows) {
-                const allocs = data.allocations || [];
-                allocRows.innerHTML = allocs.length
-                    ? allocs.map(a => `<tr>
-                        <td>${escHtml(a.bird_no || '—')}${a.breed ? ' <small>(' + escHtml(a.breed) + ')</small>' : ''}</td>
-                        <td>${escHtml(a.allocation_date || '—')}</td>
-                        <td>${escHtml(a.expected_return_date || '—')}</td>
-                        <td>${badge(a.status || 'Active', (a.status || 'Active') === 'Active' ? 'badge-success' : 'badge-secondary')}</td>
-                        <td>${Number(a.chick_returned || 0) > 0 ? 'Yes' : 'Pending'}</td>
-                    </tr>`).join('')
-                    : '<tr><td colspan="5" class="text-muted">No allocation history.</td></tr>';
-            }
-
             openModal('yrViewModal');
         }
 
@@ -432,16 +399,6 @@
                     clearAlert($('#yrDeleteAlert'));
                     openModal('yrDeleteModal');
                     break;
-                case 'allocate':
-                    const allocForm = $('#yrAllocateForm');
-                    if (allocForm) allocForm.reset();
-                    const allocYid  = $('#yrAllocateYouthId');
-                    const allocName = $('#yrAllocateName');
-                    if (allocYid)  allocYid.value       = id;
-                    if (allocName) allocName.textContent = btn.dataset.name || 'this youth';
-                    clearAlert($('#yrAllocateAlert'));
-                    openModal('yrAllocateModal');
-                    break;
             }
         });
 
@@ -474,19 +431,6 @@
                 showAlert($('#yrAlert'), data.message || 'Deleted successfully.');
                 await loadYouth();
             } catch (err) { showAlert($('#yrDeleteAlert'), err.message, 'error'); }
-        });
-
-        /* Allocate bird */
-        $('#yrAllocateForm')?.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            clearAlert($('#yrAllocateAlert'));
-            try {
-                const data = await postForm(cfg.endpoint, this);
-                if (!data.success) { showAlert($('#yrAllocateAlert'), data.message || 'Allocation failed.', 'error'); return; }
-                closeModals();
-                showAlert($('#yrAlert'), data.message || 'Bird allocated successfully.');
-                await loadYouth();
-            } catch (err) { showAlert($('#yrAllocateAlert'), err.message, 'error'); }
         });
 
         /* Initial load */

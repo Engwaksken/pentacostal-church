@@ -29,3 +29,5 @@ while ($legacyNames && $col = $legacyNames->fetch_assoc()) {
     catch (Throwable $e) { error_log("Could not make members.{$col['COLUMN_NAME']} nullable: " . $e->getMessage()); }
 }
 unset($fullNameCol, $hasMembers, $legacyNames, $col);
+
+require_once __DIR__ . '/branding.php';

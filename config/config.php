@@ -1,13 +1,13 @@
 <?php
-define('APP_NAME', 'Rongoro COU Church');
-define('APP_SHORT', 'RCOU-CMS');
 define('APP_VERSION', '1.0.0');
 define('BASE_URL', 'https://cou.kemmytech.com/');
 define('UPLOAD_PATH', __DIR__ . '/../assets/uploads/');
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
+// db.php also loads branding.php, which defines APP_NAME from the church name in Settings.
 require_once __DIR__ . '/db.php';
+define('APP_SHORT', APP_NAME);
 require_once __DIR__ . '/../includes/access.php'; 
 
 function requireLogin() {
@@ -57,8 +57,6 @@ function genNo($prefix) {
         UNION SELECT id FROM pledges WHERE pledge_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM fundraising WHERE campaign_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM fundraising_collections WHERE receipt_no LIKE '$prefix-$y-%'
-        UNION SELECT id FROM birds WHERE bird_no LIKE '$prefix-$y-%'
-        UNION SELECT id FROM bird_allocations WHERE id LIKE '$prefix-$y-%'
         UNION SELECT id FROM fathers_union WHERE fu_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM mothers_union WHERE mu_no LIKE '$prefix-$y-%'
         UNION SELECT id FROM projects WHERE project_no LIKE '$prefix-$y-%'

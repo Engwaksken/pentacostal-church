@@ -44,7 +44,7 @@ try {
 
     if ($action === 'save_email') {
         st_ensure_email($conn);
-        $smtpHost=trim((string)($_POST['smtp_host']??'')); $smtpPort=(int)($_POST['smtp_port']??587); $smtpUser=trim((string)($_POST['smtp_user']??'')); $smtpPassword=(string)($_POST['smtp_password']??''); $smtpSecure=trim((string)($_POST['smtp_secure']??'tls')); $fromEmail=trim((string)($_POST['from_email']??'')); $fromName=trim((string)($_POST['from_name']??'Rongoro COU Church')); $active=(int)($_POST['is_active']??1);
+        $smtpHost=trim((string)($_POST['smtp_host']??'')); $smtpPort=(int)($_POST['smtp_port']??587); $smtpUser=trim((string)($_POST['smtp_user']??'')); $smtpPassword=(string)($_POST['smtp_password']??''); $smtpSecure=trim((string)($_POST['smtp_secure']??'tls')); $fromEmail=trim((string)($_POST['from_email']??'')); $fromName=trim((string)($_POST['from_name']??site_name())); $active=(int)($_POST['is_active']??1);
         if($smtpHost===''||$smtpUser===''||$fromEmail==='') st_json(['success'=>false,'message'=>'SMTP host, username and from email are required.']);
         if(!filter_var($fromEmail,FILTER_VALIDATE_EMAIL)) st_json(['success'=>false,'message'=>'Invalid from email address.']);
         if($smtpPassword==='') $smtpPassword=current_value($conn,'email_settings','smtp_password');

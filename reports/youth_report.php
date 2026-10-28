@@ -67,31 +67,12 @@ $sql = "
         m.marital_status,
         m.joined_date,
 
-        m.full_name,
-
-        COALESCE(alloc.total_alloc, 0) AS total_alloc,
-        COALESCE(alloc.active_alloc, 0) AS active_alloc
+        m.full_name
 
     FROM youth AS y
 
     INNER JOIN members AS m
         ON m.id = y.member_id
-
-    LEFT JOIN (
-        SELECT
-            ba.youth_id,
-            COUNT(*) AS total_alloc,
-            SUM(
-                CASE
-                    WHEN LOWER(TRIM(COALESCE(ba.status, ''))) = 'active'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS active_alloc
-        FROM bird_allocations AS ba
-        GROUP BY ba.youth_id
-    ) AS alloc
-        ON alloc.youth_id = y.id
 
     ORDER BY
         m.full_name ASC,
@@ -262,14 +243,6 @@ include '../includes/sidebar.php';
             width: 20%;
         }
 
-        .col-allocation {
-            width: 8%;
-        }
-
-        .col-active {
-            width: 8%;
-        }
-
         .text-center {
             text-align: center !important;
         }
@@ -369,8 +342,6 @@ include '../includes/sidebar.php';
             <th class="col-date">D.O.B</th>
             <th class="col-phone">Phone</th>
             <th class="col-occupation">School/Occupation</th>
-            <th class="col-allocation text-center">Bird Allocations</th>
-            <th class="col-active text-center">Active Bird</th>
         </tr>
     </thead>
 
@@ -380,9 +351,6 @@ include '../includes/sidebar.php';
 
             <?php while ($youth = $youthResult->fetch_assoc()): ?>
                 <?php
-                $totalAlloc  = (int)($youth['total_alloc'] ?? 0);
-                $activeAlloc = (int)($youth['active_alloc'] ?? 0);
-
                 $fullName = displayValue($youth['full_name'] ?? '');
 
                 $youthNumber = displayValue(
@@ -420,22 +388,12 @@ include '../includes/sidebar.php';
                     <td>
                         <?= e(displayValue($youth['school_occupation'] ?? '')) ?>
                     </td>
-
-                    <td class="text-center">
-                        <?= number_format($totalAlloc) ?>
-                    </td>
-
-                    <td class="<?= $activeAlloc > 0
-                        ? 'status-active'
-                        : 'status-inactive' ?>">
-                        <?= $activeAlloc > 0 ? 'Yes' : 'No' ?>
-                    </td>
                 </tr>
             <?php endwhile; ?>
 
         <?php else: ?>
             <tr>
-                <td colspan="9" class="empty-row">
+                <td colspan="7" class="empty-row">
                     No youth records found.
                 </td>
             </tr>

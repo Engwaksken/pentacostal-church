@@ -125,7 +125,6 @@ $directoryTitles = [
 
     'fundraising'       => 'Fundraising',
 
-    'birds'             => 'Birds Project',
 
 
     /* --------------------------------------------------------

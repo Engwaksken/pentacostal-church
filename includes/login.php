@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /*
- * Login helpers for Rongoro COU.
+ * Login helpers.
  *
  * Flow:
  * 1. A user may sign in with either username OR email.
@@ -95,7 +95,7 @@ function login_asset_url(string $path): string
 
 function get_login_site_settings(mysqli $conn): array
 {
-    $siteName = login_setting($conn, 'site_name', 'Rongoro COU');
+    $siteName = login_setting($conn, 'site_name', APP_NAME);
 
     $logoPath = login_setting($conn, 'site_logo', '');
     if ($logoPath === '') {
@@ -318,7 +318,7 @@ function login_send_verification_code(mysqli $conn, array $user, bool $isResend 
     }
 
     $code = (string)random_int(100000, 999999);
-    $siteName = login_setting($conn, 'site_name', 'Rongoro COU');
+    $siteName = login_setting($conn, 'site_name', APP_NAME);
     $fullName = trim((string)($user['full_name'] ?? ''));
     $displayName = $fullName !== '' ? $fullName : (string)$user['username'];
 

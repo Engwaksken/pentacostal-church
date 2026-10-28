@@ -322,7 +322,7 @@ function fu_build_pdf(array $members, string $statusFilter): string
   </thead>
   <tbody>' . $rows . '</tbody>
 </table>
-<div class="footer">Rongoro COU Church &mdash; Fathers\' Union Register &mdash; ' . $genDate . '</div>
+<div class="footer">' . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . ' &mdash; Fathers\' Union Register &mdash; ' . $genDate . '</div>
 </body>
 </html>';
 }
@@ -358,11 +358,11 @@ function fu_send_email_confirmation(array $row): bool
                 <tr><td style='padding:10px;border:1px solid #e5e7eb;background:#fafafa'><strong>Amount</strong></td><td style='padding:10px;border:1px solid #e5e7eb'>UGX {$amount}</td></tr>
                 <tr><td style='padding:10px;border:1px solid #e5e7eb;background:#fafafa'><strong>Date</strong></td><td style='padding:10px;border:1px solid #e5e7eb'>{$dateH}</td></tr>
             </table>
-            <p style='margin-bottom:0'>Blessings,<br><strong>Rongoro COU Church</strong></p>
+            <p style='margin-bottom:0'>Blessings,<br><strong>" . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . "</strong></p>
         </div>
     </div>";
     $text = "Dear {$name},\n\nThank you. Your Fathers' Union subscription payment has been received.\n"
-          . "Receipt No: {$receiptNo}\nFU No: {$fuNo}\nAmount: UGX {$amount}\nDate: {$date}\n\nRongoro COU Church";
+          . "Receipt No: {$receiptNo}\nFU No: {$fuNo}\nAmount: UGX {$amount}\nDate: {$date}\n\n" . APP_NAME;
     try { return sendSystemEmail($conn, $email, $name, $subject, $html, $text); }
     catch (Throwable $e) { error_log('FU email: ' . $e->getMessage()); return false; }
 }
@@ -375,7 +375,7 @@ function fu_send_sms_confirmation(array $row): bool
     $receiptNo = 'FU-RCT-' . str_pad((string)($row['id'] ?? 0), 5, '0', STR_PAD_LEFT);
     $amount    = number_format((float)($row['subscription'] ?? 0));
     $date      = fu_clean($row['date_joined'] ?? date('Y-m-d'));
-    $msg = "Rongoro COU Church: Fathers' Union payment received. UGX {$amount}. Receipt: {$receiptNo}. Date: {$date}. Thank you.";
+    $msg = APP_NAME . ": Fathers' Union payment received. UGX {$amount}. Receipt: {$receiptNo}. Date: {$date}. Thank you.";
     try {
         foreach (['sendSms','sendSystemSms','sendSMS','sendSystemSMS'] as $fn) {
             if (function_exists($fn)) return (bool)$fn($conn, $phone, $msg);

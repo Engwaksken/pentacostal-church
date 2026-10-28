@@ -258,7 +258,7 @@ function bm_send_email(mysqli $conn, string $email, string $name, string $subjec
     $html = "<div style='font-family:Arial,sans-serif;line-height:1.6'>
                 <p>Dear <strong>{$safeName}</strong>,</p>
                 <div>{$safeMessage}</div>
-                <p>Regards,<br><strong>Rongoro COU Church</strong></p>
+                <p>Regards,<br><strong>" . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . "</strong></p>
              </div>";
     return sendSystemEmail($conn, $email, $name ?: 'Member', $subject, $html, $message);
 }

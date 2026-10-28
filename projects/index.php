@@ -70,7 +70,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? $_SESSION['csrf'] ?? '';
         <input type="hidden" name="id" id="projectId">
         <div class="form-grid">
           <div class="form-group"><label>Project Name *</label><input type="text" name="name" id="projectName" class="form-control" required></div>
-          <div class="form-group"><label>Project Type *</label><select name="type" id="projectType" class="form-control" required><option>Birds Empowerment</option><option>Agriculture</option><option>Crafts</option><option>Construction</option><option>Welfare</option><option>Education</option><option>Other</option></select></div>
+          <div class="form-group"><label>Project Type *</label><select name="type" id="projectType" class="form-control" required><option>Agriculture</option><option>Crafts</option><option>Construction</option><option>Welfare</option><option>Education</option><option>Other</option></select></div>
           <div class="form-group form-full"><label>Description</label><textarea name="description" id="projectDescription" class="form-control" rows="3"></textarea></div>
           <div class="form-group"><label>Target Amount (UGX)</label><input type="number" name="target_amount" id="targetAmount" class="form-control" value="0" step="0.01" min="0"></div>
           <div class="form-group"><label>Start Date *</label><input type="date" name="start_date" id="startDate" class="form-control" value="<?=date('Y-m-d')?>" required></div>

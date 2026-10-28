@@ -1951,18 +1951,6 @@ $memberId =
             'fundraising.view'
         );
 
-
-        navLink(
-            $sidebarBaseUrl .
-            'birds/',
-            'fa-feather-alt',
-            'Birds Project',
-            $dir,
-            $cur,
-            'birds',
-            'birds.view'
-        );
-
         ?>
 
 

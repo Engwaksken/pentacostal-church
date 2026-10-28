@@ -203,7 +203,6 @@ function youth_gen_no(mysqli $conn): string
 function youth_build_select(mysqli $conn): array
 {
     $hasMembers = youth_table_exists($conn, 'members') && youth_col_exists($conn, 'youth', 'member_id');
-    $hasAlloc = youth_table_exists($conn, 'bird_allocations') && youth_col_exists($conn, 'bird_allocations', 'youth_id');
 
     $select = [
         'y.id',
@@ -243,10 +242,6 @@ function youth_build_select(mysqli $conn): array
         $select[] = "NULL AS address";
         $select[] = "NULL AS occupation";
     }
-
-    $select[] = $hasAlloc
-        ? "(SELECT COUNT(*) FROM bird_allocations ba WHERE ba.youth_id = y.id AND COALESCE(ba.status, 'Active') = 'Active') AS active_birds"
-        : "0 AS active_birds";
 
     $join = $hasMembers ? "LEFT JOIN members m ON m.id = y.member_id" : '';
 
@@ -473,59 +468,6 @@ function youth_fetch_paginated(
     ];
 }
 
-function youth_get_allocations(mysqli $conn, int $youthId): array
-{
-    if (!youth_table_exists($conn, 'bird_allocations') || !youth_col_exists($conn, 'bird_allocations', 'youth_id')) {
-        return [];
-    }
-
-    $birdJoin = youth_table_exists($conn, 'birds') && youth_col_exists($conn, 'bird_allocations', 'bird_id')
-        ? "LEFT JOIN birds b ON b.id = ba.bird_id"
-        : "";
-
-    $cols = [
-        'ba.id',
-        youth_col_exists($conn, 'bird_allocations', 'allocation_no') ? 'ba.allocation_no' : 'NULL AS allocation_no',
-        $birdJoin ? (youth_col_exists($conn, 'birds', 'bird_no') ? 'b.bird_no' : 'b.id AS bird_no') : 'NULL AS bird_no',
-        ($birdJoin && youth_col_exists($conn, 'birds', 'breed')) ? 'b.breed' : 'NULL AS breed'
-    ];
-
-    foreach ([
-        'allocation_date',
-        'expected_return_date',
-        'actual_return_date',
-        'status',
-        'chick_returned',
-        'chick_count',
-        'notes'
-    ] as $column) {
-        $cols[] = youth_col_exists($conn, 'bird_allocations', $column)
-            ? "ba.`{$column}`"
-            : "NULL AS `{$column}`";
-    }
-
-    $stmt = $conn->prepare("
-        SELECT " . implode(', ', $cols) . "
-        FROM bird_allocations ba
-        {$birdJoin}
-        WHERE ba.youth_id = ?
-        ORDER BY ba.id DESC
-    ");
-    $stmt->bind_param('i', $youthId);
-    $stmt->execute();
-
-    $result = $stmt->get_result();
-    $rows = [];
-
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
-    }
-
-    $stmt->close();
-
-    return $rows;
-}
-
 function youth_report_summary(array $rows): array
 {
     $summary = [
@@ -533,8 +475,7 @@ function youth_report_summary(array $rows): array
         'active' => 0,
         'inactive' => 0,
         'male' => 0,
-        'female' => 0,
-        'with_birds' => 0
+        'female' => 0
     ];
 
     foreach ($rows as $row) {
@@ -553,10 +494,6 @@ function youth_report_summary(array $rows): array
 
         if (in_array($gender, ['female', 'f'], true)) {
             $summary['female']++;
-        }
-
-        if ((int)($row['active_birds'] ?? 0) > 0) {
-            $summary['with_birds']++;
         }
     }
 
@@ -589,8 +526,7 @@ function youth_export_csv(array $rows): void
         'Next of Kin Phone',
         'Skills',
         'Registered Date',
-        'Status',
-        'Active Birds'
+        'Status'
     ]);
 
     foreach ($rows as $index => $row) {
@@ -607,8 +543,7 @@ function youth_export_csv(array $rows): void
             $row['next_of_kin_phone'] ?? '',
             $row['skills'] ?? '',
             $row['registered_date'] ?? '',
-            $row['status'] ?? 'Active',
-            $row['active_birds'] ?? 0
+            $row['status'] ?? 'Active'
         ]);
     }
 
@@ -741,7 +676,6 @@ function youth_export_pdf(array $rows): void
                 <td><strong>' . (int)$summary['inactive'] . '</strong>Inactive</td>
                 <td><strong>' . (int)$summary['male'] . '</strong>Male</td>
                 <td><strong>' . (int)$summary['female'] . '</strong>Female</td>
-                <td><strong>' . (int)$summary['with_birds'] . '</strong>With Birds</td>
             </tr>
         </table>
 
@@ -757,13 +691,12 @@ function youth_export_pdf(array $rows): void
                     <th>School/Work</th>
                     <th>Registered</th>
                     <th>Status</th>
-                    <th>Birds</th>
                 </tr>
             </thead>
             <tbody>';
 
     if (!$rows) {
-        $html .= '<tr><td colspan="10" style="text-align:center">No youth records found.</td></tr>';
+        $html .= '<tr><td colspan="9" style="text-align:center">No youth records found.</td></tr>';
     } else {
         foreach ($rows as $index => $row) {
             $html .= '
@@ -777,7 +710,6 @@ function youth_export_pdf(array $rows): void
                     <td>' . youth_h($row['school_or_work'] ?? '') . '</td>
                     <td>' . youth_h($row['registered_date'] ?? '') . '</td>
                     <td>' . youth_h($row['status'] ?? 'Active') . '</td>
-                    <td>' . youth_h($row['active_birds'] ?? 0) . '</td>
                 </tr>';
         }
     }
@@ -861,10 +793,7 @@ try {
             youth_json(false, 'Youth record not found.');
         }
 
-        youth_json(true, 'Loaded.', [
-            'item' => $item,
-            'allocations' => youth_get_allocations($conn, $id)
-        ]);
+        youth_json(true, 'Loaded.', ['item' => $item]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -1005,43 +934,6 @@ try {
         $stmt->close();
 
         youth_json(true, 'Youth deleted successfully.');
-    }
-
-    if ($action === 'allocate_bird') {
-        if (!youth_table_exists($conn, 'bird_allocations')) {
-            youth_json(false, 'bird_allocations table does not exist.');
-        }
-
-        $youthId = (int)($_POST['youth_id'] ?? 0);
-        $birdId = (int)($_POST['bird_id'] ?? 0);
-
-        if ($youthId <= 0 || $birdId <= 0) {
-            youth_json(false, 'Please select both a youth member and a bird.');
-        }
-
-        $data = [
-            'youth_id' => (string)$youthId,
-            'bird_id' => (string)$birdId,
-            'allocation_date' => youth_get('allocation_date', date('Y-m-d')) ?: date('Y-m-d'),
-            'expected_return_date' => youth_get('expected_return_date', date('Y-m-d', strtotime('+1 year'))),
-            'status' => 'Active',
-            'notes' => youth_get('notes'),
-        ];
-
-        if (youth_col_exists($conn, 'bird_allocations', 'allocation_no')) {
-            $data['allocation_no'] = 'BAL-' . date('Ymd') . '-' . str_pad((string)random_int(1, 9999), 4, '0', STR_PAD_LEFT);
-        }
-
-        youth_insert_dynamic($conn, 'bird_allocations', $data);
-
-        if (youth_table_exists($conn, 'birds') && youth_col_exists($conn, 'birds', 'status')) {
-            $stmt = $conn->prepare("UPDATE birds SET status = 'Allocated' WHERE id = ?");
-            $stmt->bind_param('i', $birdId);
-            $stmt->execute();
-            $stmt->close();
-        }
-
-        youth_json(true, 'Bird allocated successfully.');
     }
 
     youth_json(false, 'Invalid action.');

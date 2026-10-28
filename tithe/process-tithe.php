@@ -188,12 +188,12 @@ function send_tithe_email_confirmation(array $row): bool
                     <tr><td style='padding:10px;border:1px solid #e5e7eb;background:#fafafa;'><strong>Payment Method</strong></td><td style='padding:10px;border:1px solid #e5e7eb;'>{$safeMethod}</td></tr>
                 </table>
                 <p>You can download your receipt from the system using receipt number <strong>{$safeReceipt}</strong>.</p>
-                <p style='margin-bottom:0;'>Blessings,<br><strong>Rongoro COU Church</strong></p>
+                <p style='margin-bottom:0;'>Blessings,<br><strong>" . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . "</strong></p>
             </div>
         </div>
     ";
 
-    $text = "Dear {$memberName},\n\nThank you for your tithe payment.\nReceipt No: {$receiptNo}\nAmount: UGX {$amount}\nDate Paid: {$date}\nPayment Method: " . ($method ?: 'N/A') . "\n\nRongoro COU Church";
+    $text = "Dear {$memberName},\n\nThank you for your tithe payment.\nReceipt No: {$receiptNo}\nAmount: UGX {$amount}\nDate Paid: {$date}\nPayment Method: " . ($method ?: 'N/A') . "\n\n" . APP_NAME;
 
     try {
         return sendSystemEmail($conn, $email, $memberName, $subject, $html, $text);
@@ -213,7 +213,7 @@ function send_tithe_sms_confirmation(array $row): bool
     $receiptNo = clean_value($row['receipt_no'] ?? ('TITHE-' . ($row['id'] ?? '')));
     $amount = number_format((float)($row['amount'] ?? 0));
     $date = clean_value($row['tithe_date'] ?? date('Y-m-d'));
-    $message = "Rongoro COU Church: Thank you for your tithe payment of UGX {$amount}. Receipt: {$receiptNo}. Date: {$date}.";
+    $message = APP_NAME . ": Thank you for your tithe payment of UGX {$amount}. Receipt: {$receiptNo}. Date: {$date}.";
 
     try {
         if (function_exists('sendSms')) {

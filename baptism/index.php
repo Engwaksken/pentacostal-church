@@ -363,7 +363,7 @@ foreach ($members as $m) {
 
                         <div class="form-group" style="margin:0">
                             <label>Venue</label>
-                            <input type="text" id="sharedVenue" class="form-control" value="Rongoro COU Church">
+                            <input type="text" id="sharedVenue" class="form-control" value="<?= htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') ?>">
                         </div>
                     </div>
                 </div>

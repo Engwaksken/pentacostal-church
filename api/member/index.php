@@ -95,7 +95,7 @@ function mapi_action_me(mysqli $conn): never
     if ($logo !== '' && !preg_match('#^https?://#i', $logo) && defined('BASE_URL')) $logo = rtrim(BASE_URL, '/') . '/' . ltrim($logo, '/');
     mapi_ok([
         'member' => mapi_member_profile($conn, $auth['member_id']),
-        'church' => ['name' => mapi_setting($conn, 'site_name', 'Rongoro COU'), 'logo_url' => $logo],
+        'church' => ['name' => mapi_setting($conn, 'site_name', APP_NAME), 'logo_url' => $logo],
     ]);
 }
 

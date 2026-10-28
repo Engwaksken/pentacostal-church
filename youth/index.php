@@ -39,8 +39,6 @@ function yr_scalar(mysqli $conn, string $sql): int {
 
 $hasYouth   = yr_table_exists($conn, 'youth');
 $hasMembers = yr_table_exists($conn, 'members');
-$hasBirds   = yr_table_exists($conn, 'birds');
-$hasAlloc   = yr_table_exists($conn, 'bird_allocations');
 $csrfToken  = $_SESSION['csrf_token'] ?? $_SESSION['csrf'] ?? '';
 
 /* Endpoint used by the page's AJAX calls � always resolved relative to
@@ -56,8 +54,6 @@ $maleYouth     = ($hasYouth && $hasMembers)
     ? yr_scalar($conn, "SELECT COUNT(*) FROM youth y JOIN members m ON m.id=y.member_id WHERE LOWER(COALESCE(m.gender,'')) IN ('male','m')") : 0;
 $femaleYouth   = ($hasYouth && $hasMembers)
     ? yr_scalar($conn, "SELECT COUNT(*) FROM youth y JOIN members m ON m.id=y.member_id WHERE LOWER(COALESCE(m.gender,'')) IN ('female','f')") : 0;
-$withBirds     = ($hasYouth && $hasAlloc)
-    ? yr_scalar($conn, "SELECT COUNT(DISTINCT youth_id) FROM bird_allocations WHERE COALESCE(status,'Active')='Active' AND youth_id IS NOT NULL") : 0;
 
 /* Members available for registration (not yet youth) */
 $memberOptions = [];
@@ -75,24 +71,6 @@ if ($hasMembers && $hasYouth) {
     } catch (Throwable $e) {}
 }
 
-/* Available birds */
-$birdOptions = [];
-if ($hasBirds) {
-    try {
-        $where = [];
-        if (yr_col_exists($conn,'birds','status'))
-            $where[] = "COALESCE(status,'Available') IN ('Available','Active')";
-        if ($hasAlloc && yr_col_exists($conn,'bird_allocations','bird_id'))
-            $where[] = "id NOT IN (SELECT bird_id FROM bird_allocations WHERE COALESCE(status,'Active')='Active' AND bird_id IS NOT NULL)";
-        $birdNo = yr_col_exists($conn,'birds','bird_no') ? 'bird_no' : 'id';
-        $breed  = yr_col_exists($conn,'birds','breed')   ? ', breed' : ', NULL AS breed';
-        $sql    = "SELECT id, $birdNo AS bird_no $breed FROM birds" .
-                  ($where ? ' WHERE '.implode(' AND ',$where) : '') . " ORDER BY id DESC";
-        $res = $conn->query($sql);
-        while ($res && $row = $res->fetch_assoc()) $birdOptions[] = $row;
-        if ($res) $res->close();
-    } catch (Throwable $e) {}
-}
 ?>
 
 <div class="main-content">
@@ -104,7 +82,7 @@ if ($hasBirds) {
         <div class="module-page-header">
             <div class="module-title">
                 <h2><i class="fa fa-user-graduate"></i> Youth Registry</h2>
-                <p>Registered youth members and bird empowerment tracking</p>
+                <p>Registered youth members</p>
             </div>
             <div class="module-actions">
                 <a href="process-youth.php?action=export_csv" class="btn btn-success" id="yrExportCsv">
@@ -152,19 +130,6 @@ if ($hasBirds) {
             <div class="stat-card">
                 <div class="stat-icon" style="background:rgba(220,53,69,.12);color:var(--danger)"><i class="fa fa-venus"></i></div>
                 <div class="stat-body"><div class="stat-number" id="yrStatFemale"><?= (int)$femaleYouth ?></div><div class="stat-label">Female Youth</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="background:rgba(212,160,23,.15);color:var(--accent)"><i class="fa fa-feather-alt"></i></div>
-                <div class="stat-body"><div class="stat-number" id="yrStatBirds"><?= (int)$withBirds ?></div><div class="stat-label">With Active Birds</div></div>
-            </div>
-        </div>
-
-        <!-- -- Info banner ------------------------------------ -->
-        <div class="info-box gold">
-            <i class="fa fa-dove"></i>
-            <div>
-                <h4>Birds Empowerment Program</h4>
-                <p>Youth registered here can be allocated birds and tracked through the full rotation cycle.</p>
             </div>
         </div>
 
@@ -223,14 +188,13 @@ if ($hasBirds) {
                                 <th>Gender</th>
                                 <th>Phone</th>
                                 <th>Education</th>
-                                <th>Bird Status</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="yrTableBody">
                             <tr>
-                                <td colspan="9" class="text-center text-muted" style="padding:28px">
+                                <td colspan="8" class="text-center text-muted" style="padding:28px">
                                     <i class="fa fa-spinner fa-spin mr-2"></i> Loading youth records...
                                 </td>
                             </tr>
@@ -425,20 +389,6 @@ if ($hasBirds) {
                 </div>
                 <div class="app-modal-body">
                     <div id="yrViewContent" class="detail-grid"></div>
-                    <h4 class="mt-3"><i class="fa fa-feather-alt"></i> Bird Allocation History</h4>
-                    <div class="module-table-wrap">
-                        <table class="table module-table" style="min-width:560px">
-                            <thead>
-                                <tr>
-                                    <th>Bird</th><th>Allocated</th>
-                                    <th>Expected Return</th><th>Status</th><th>Returned</th>
-                                </tr>
-                            </thead>
-                            <tbody id="yrAllocRows">
-                                <tr><td colspan="5" class="text-muted">No allocation history.</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
                 <div class="app-modal-footer">
                     <button type="button" class="btn btn-outline" data-close-yr-modal>Close</button>
@@ -461,9 +411,6 @@ if ($hasBirds) {
                         <input type="hidden" name="action" value="delete">
                         <input type="hidden" name="id"     id="yrDeleteId">
                         <p>Are you sure you want to delete / deactivate <strong id="yrDeleteName"></strong>?</p>
-                        <p class="text-muted small mt-2">
-                            If the youth has active bird allocations they will be deactivated instead of deleted.
-                        </p>
                     </div>
                     <div class="app-modal-footer">
                         <button type="button" class="btn btn-outline" data-close-yr-modal>Cancel</button>
@@ -475,61 +422,6 @@ if ($hasBirds) {
             </div>
         </div><!-- /#yrDeleteModal -->
 
-
-        <!-- -- Allocate Bird ----------------------------------- -->
-        <div class="app-modal" id="yrAllocateModal" aria-hidden="true">
-            <div class="app-dialog">
-                <form id="yrAllocateForm">
-                    <div class="app-modal-header">
-                        <h3><i class="fa fa-feather-alt"></i> Allocate Bird</h3>
-                        <button type="button" class="modal-close" data-close-yr-modal>&times;</button>
-                    </div>
-                    <div class="app-modal-body">
-                        <div id="yrAllocateAlert" class="ajax-alert"></div>
-                        <input type="hidden" name="csrf_token"  value="<?= h($csrfToken) ?>">
-                        <input type="hidden" name="action"      value="allocate_bird">
-                        <input type="hidden" name="youth_id"    id="yrAllocateYouthId">
-                        <p class="mb-2">Allocating bird to <strong id="yrAllocateName"></strong>.</p>
-
-                        <div class="form-grid">
-                            <div class="form-group full-span">
-                                <label>Available Bird <span class="req">*</span></label>
-                                <select name="bird_id" id="yrBirdId" class="form-control" required>
-                                    <option value="">- Select Bird -</option>
-                                    <?php foreach ($birdOptions as $b): ?>
-                                    <option value="<?= (int)$b['id'] ?>">
-                                        <?= h($b['bird_no'] ?: 'Bird #'.$b['id']) ?>
-                                        <?= !empty($b['breed']) ? ' - '.h($b['breed']) : '' ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Allocation Date</label>
-                                <input type="date" name="allocation_date" class="form-control"
-                                       value="<?= date('Y-m-d') ?>">
-                            </div>
-                            <div class="form-group">
-                                <label>Expected Return Date</label>
-                                <input type="date" name="expected_return_date" class="form-control"
-                                       value="<?= date('Y-m-d', strtotime('+1 year')) ?>">
-                            </div>
-                            <div class="form-group full-span">
-                                <label>Notes</label>
-                                <textarea name="notes" class="form-control"
-                                          placeholder="Any special instructions or notes..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="app-modal-footer">
-                        <button type="button" class="btn btn-outline" data-close-yr-modal>Cancel</button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa fa-save"></i> Allocate
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div><!-- /#yrAllocateModal -->
 
         <?php endif; /* hasYouth && hasMembers */ ?>
 
@@ -747,7 +639,7 @@ window.YouthRegistryConfig = { endpoint: <?= json_encode($processEndpoint) ?> };
         const tbody = $('#yrTableBody');
         if (!items.length) {
             tbody.innerHTML = `<tr>
-                <td colspan="9">
+                <td colspan="8">
                     <div class="empty-state">
                         <div class="icon"><i class="fas fa-user-graduate"></i></div>
                         <p>No youth records found for the selected filters.</p>
@@ -763,9 +655,6 @@ window.YouthRegistryConfig = { endpoint: <?= json_encode($processEndpoint) ?> };
             const gender = r.gender
                 ? badge(r.gender, r.gender?.toLowerCase() === 'female' ? 'badge-info' : 'badge-secondary')
                 : '-';
-            const birdBadge = Number(r.active_birds) > 0
-                ? `<span class="badge badge-warning"><i class="fas fa-dove mr-1"></i>${r.active_birds} active</span>`
-                : `<span class="badge badge-secondary"><i class="fas fa-minus-circle mr-1"></i>None</span>`;
             const statusBadge = badge(
                 r.status || 'Active',
                 (r.status || 'Active') === 'Active' ? 'badge-success' : 'badge-secondary'
@@ -786,13 +675,11 @@ window.YouthRegistryConfig = { endpoint: <?= json_encode($processEndpoint) ?> };
                 <td>${gender}</td>
                 <td>${esc(r.phone || '-')}</td>
                 <td>${esc(r.education_level || '-')}</td>
-                <td>${birdBadge}</td>
                 <td>${statusBadge}</td>
                 <td>
                     <div class="action-buttons">
                         <button class="btn btn-sm btn-info btn-icon" data-action="view" data-id="${r.id}" title="View"><i class="fa fa-eye"></i></button>
                         <button class="btn btn-sm btn-primary btn-icon" data-action="edit" data-id="${r.id}" title="Edit"><i class="fa fa-edit"></i></button>
-                        <button class="btn btn-sm btn-accent btn-icon" data-action="allocate" data-id="${r.id}" data-name="${name}" title="Allocate Bird"><i class="fa fa-feather-alt"></i></button>
                         <button class="btn btn-sm btn-danger btn-icon" data-action="delete" data-id="${r.id}" data-name="${name}" title="Delete"><i class="fa fa-trash"></i></button>
                     </div>
                 </td>
@@ -933,7 +820,6 @@ window.YouthRegistryConfig = { endpoint: <?= json_encode($processEndpoint) ?> };
     async function openView(id) {
         clearAlert($('#yrAlert'));
         $('#yrViewContent').innerHTML = '<p class="text-muted"><i class="fa fa-spinner fa-spin"></i> Loading...</p>';
-        $('#yrAllocRows').innerHTML   = '<tr><td colspan="5" class="text-muted">Loading...</td></tr>';
         openModal('#yrViewModal');
 
         try {
@@ -958,17 +844,6 @@ window.YouthRegistryConfig = { endpoint: <?= json_encode($processEndpoint) ?> };
             $('#yrViewContent').innerHTML = fields.map(([label, val]) =>
                 `<div class="detail-item"><b>${esc(label)}</b>${esc(val)}</div>`
             ).join('');
-
-            const allocs = data.allocations || [];
-            $('#yrAllocRows').innerHTML = allocs.length
-                ? allocs.map(a => `<tr>
-                    <td>${esc(a.bird_no || '-')} ${a.breed ? '<small class="text-muted">'+esc(a.breed)+'</small>' : ''}</td>
-                    <td>${esc(a.allocation_date || '-')}</td>
-                    <td>${esc(a.expected_return_date || '-')}</td>
-                    <td>${badge(a.status || '-', a.status === 'Completed' ? 'badge-success' : a.status === 'Overdue' ? 'badge-danger' : 'badge-primary')}</td>
-                    <td>${esc(a.actual_return_date || '-')}</td>
-                  </tr>`).join('')
-                : '<tr><td colspan="5" class="text-muted">No allocation history.</td></tr>';
         } catch (err) {
             showAlert($('#yrAlert'), err.message, 'error');
         }
@@ -998,14 +873,6 @@ window.YouthRegistryConfig = { endpoint: <?= json_encode($processEndpoint) ?> };
 
         if (action === 'view')   { openView(id); return; }
         if (action === 'edit')   { openEdit(id); return; }
-
-        if (action === 'allocate') {
-            clearAlert($('#yrAllocateAlert'));
-            $('#yrAllocateYouthId').value = id;
-            $('#yrAllocateName').textContent = name || 'Youth Member';
-            openModal('#yrAllocateModal');
-            return;
-        }
 
         if (action === 'delete') {
             clearAlert($('#yrDeleteAlert'));
@@ -1064,18 +931,6 @@ window.YouthRegistryConfig = { endpoint: <?= json_encode($processEndpoint) ?> };
             showAlert($('#yrAlert'), data.message || 'Deleted successfully.');
             await loadYouth();
         } catch (err) { showAlert($('#yrDeleteAlert'), err.message, 'error'); }
-    });
-
-    /* -- Allocate form ------------------------------------- */
-    $('#yrAllocateForm')?.addEventListener('submit', async e => {
-        e.preventDefault();
-        try {
-            const data = await postForm($('#yrAllocateForm'));
-            if (!data.success) return showAlert($('#yrAllocateAlert'), data.message || 'Allocate failed.', 'error');
-            closeModals();
-            showAlert($('#yrAlert'), data.message || 'Bird allocated successfully.');
-            await loadYouth();
-        } catch (err) { showAlert($('#yrAllocateAlert'), err.message, 'error'); }
     });
 
     /* -- init ---------------------------------------------- */

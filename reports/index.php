@@ -5,8 +5,6 @@ requireLogin();
 $total_members = numRows("SELECT id FROM members WHERE status='Active'");
 $total_youth   = numRows("SELECT id FROM youth");
 $total_contrib = fetchOne("SELECT COALESCE(SUM(amount),0) as t FROM contributions")['t'];
-$total_birds   = numRows("SELECT id FROM birds");
-$active_alloc  = numRows("SELECT id FROM bird_allocations WHERE status='Active'");
 ?>
 <?php include '../includes/header.php'; ?>
 <?php include '../includes/sidebar.php'; ?>
@@ -43,21 +41,6 @@ $active_alloc  = numRows("SELECT id FROM bird_allocations WHERE status='Active'"
         <div class="d-flex justify-content-center gap-2">
           <a href="members_report.php" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> Preview</a>
           <a href="members_report.php?pdf=1" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> PDF</a>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Birds Report -->
-  <div class="col-md-4 mb-4">
-    <div class="card report-card h-100">
-      <div class="card-body text-center">
-        <div class="report-icon" style="background:#d4a017"><i class="fas fa-dove"></i></div>
-        <h5 class="mt-3">Birds Project Report</h5>
-        <p class="text-muted">Full rotation history, active allocations and chick returns.</p>
-        <div class="badge badge-warning mb-3"><?=$active_alloc?> Active / <?=$total_birds?> Total Birds</div>
-        <div class="d-flex justify-content-center gap-2">
-          <a href="birds_report.php" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> Preview</a>
-          <a href="birds_report.php?pdf=1" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> PDF</a>
         </div>
       </div>
     </div>

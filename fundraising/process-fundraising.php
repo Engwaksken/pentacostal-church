@@ -347,7 +347,7 @@ function fr_build_campaigns_pdf(array $campaigns, string $statusFilter): string
   </tr></thead>
   <tbody>' . $rows . '</tbody>
 </table>
-<div class="footer">Rongoro COU Church &mdash; Fundraising Report &mdash; ' . $genDate . '</div>
+<div class="footer">' . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . ' &mdash; Fundraising Report &mdash; ' . $genDate . '</div>
 </body></html>';
 }
 
@@ -427,7 +427,7 @@ function fr_build_collections_pdf(mysqli $conn, int $campaignId, array $collecti
   </tr></thead>
   <tbody>' . $rows . '</tbody>
 </table>
-<div class="footer">Rongoro COU Church &mdash; Fundraising Collections &mdash; ' . $genDate . '</div>
+<div class="footer">' . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . ' &mdash; Fundraising Collections &mdash; ' . $genDate . '</div>
 </body></html>';
 }
 
@@ -456,9 +456,9 @@ function fr_build_message(array $r): array
         . "<tr><td style='padding:10px;border:1px solid #e5e7eb;background:#fafafa'><strong>Date</strong></td><td style='padding:10px;border:1px solid #e5e7eb'>" . fr_h($date) . "</td></tr>"
         . "<tr><td style='padding:10px;border:1px solid #e5e7eb;background:#fafafa'><strong>Method</strong></td><td style='padding:10px;border:1px solid #e5e7eb'>" . fr_h($method) . "</td></tr>"
         . "</table><p>May God bless you for supporting the church fundraising campaign.</p>"
-        . "<p style='margin-bottom:0'>Rongoro COU Church</p></div></div>";
-    $text = "Dear {$donor}, thank you for your fundraising contribution of {$amount} to {$campaign}. Receipt: {$receipt}. Date: {$date}. Rongoro COU Church.";
-    $sms  = "Rongoro COU Church: Thank you {$donor} for your fundraising contribution of {$amount} to {$campaign}. Receipt {$receipt}.";
+        . "<p style='margin-bottom:0'>" . fr_h(APP_NAME) . "</p></div></div>";
+    $text = "Dear {$donor}, thank you for your fundraising contribution of {$amount} to {$campaign}. Receipt: {$receipt}. Date: {$date}. " . APP_NAME . ".";
+    $sms  = APP_NAME . ": Thank you {$donor} for your fundraising contribution of {$amount} to {$campaign}. Receipt {$receipt}.";
     return ['subject' => $subject, 'html' => $html, 'text' => $text, 'sms' => $sms];
 }
 

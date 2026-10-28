@@ -108,7 +108,7 @@ ob_start();
 </table>
 
 <div class="footer">
-  Rongoro Church of Uganda &mdash; Members Report &mdash; <?= e($generated) ?>
+  <?= e(APP_NAME) ?> &mdash; Members Report &mdash; <?= e($generated) ?>
 </div>
 
 </body>

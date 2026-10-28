@@ -4,7 +4,7 @@
   const deleteControlSelector = [
     'button[data-action="delete"]', 'button[data-act="delete"]', 'button[data-zone-action="delete"]',
     'button[data-project-action="delete"]', 'button[data-delete-id]',
-    'button.delete-bird', 'button[class*="delete-"]',
+    'button[class*="delete-"]',
     'a[href*="delete.php"]', 'form input[name="action"][value^="delete"]'
   ].join(',');
   const isVisible = (el) => !!el && el.getAttribute('aria-hidden') !== 'true' &&

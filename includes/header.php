@@ -84,7 +84,7 @@ if (!function_exists('cms_asset_url')) {
     }
 }
 
-$siteName = 'Rongoro COU CMS';
+$siteName = APP_NAME;
 $faviconPath = '';
 $siteLogo = '';
 
@@ -152,7 +152,7 @@ $adjustThemeColor = static function (string $hex, int $percent): string {
 ?>
 <style>:root{--primary:<?= h($themeColors['primary']) ?>;--primary-dk:<?= h($adjustThemeColor($themeColors['primary'], -30)) ?>;--primary-lt:<?= h($adjustThemeColor($themeColors['primary'], 20)) ?>;--primary-fade:color-mix(in srgb, <?= h($themeColors['primary']) ?> 8%, transparent);--accent:<?= h($themeColors['accent']) ?>;--accent-lt:<?= h($adjustThemeColor($themeColors['accent'], 20)) ?>;--bg:<?= h($themeColors['bg']) ?>;--text:<?= h($themeColors['text']) ?>}</style>
 <link rel="manifest" href="<?= h(BASE_URL . 'manifest.webmanifest') ?>">
-<meta name="theme-color" content="#4a1e8f">
+<meta name="theme-color" content="<?= h($themeColors['primary'] ?? '#4a1e8f') ?>">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">

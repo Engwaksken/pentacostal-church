@@ -328,7 +328,7 @@ function ss_build_pupils_pdf_html(array $pupils, string $classLabel, string $sta
   </thead>
   <tbody>' . $rows . '</tbody>
 </table>
-<div class="footer">Rongoro COU Church &mdash; Sunday School Register &mdash; ' . $genDate . '</div>
+<div class="footer">' . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . ' &mdash; Sunday School Register &mdash; ' . $genDate . '</div>
 </body>
 </html>';
 }
@@ -436,7 +436,7 @@ function ss_build_attendance_pdf_html(mysqli $conn, int $classId, string $lesson
   </thead>
   <tbody>' . $rows . '</tbody>
 </table>
-<div class="footer">Rongoro COU Church &mdash; Sunday School Attendance &mdash; ' . $genDate . '</div>
+<div class="footer">' . htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8') . ' &mdash; Sunday School Attendance &mdash; ' . $genDate . '</div>
 </body>
 </html>';
 }
