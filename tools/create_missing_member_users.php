@@ -4,11 +4,12 @@ require_once __DIR__.'/../config/config.php';
 requireLogin();
 if (!isAdmin()) { http_response_code(403); exit('Administrator access required.'); }
 $conn->set_charset('utf8mb4');
+// Same rule as members/process-member.php: the member number is the username, the name only a fallback.
 function unique_username(mysqli $conn,string $fullName,string $memberNo):string{
-    $base=strtolower((string)preg_replace('/[^a-z0-9]+/i','.',trim($fullName)));
-    $base=trim($base,'.') ?: strtolower((string)preg_replace('/[^a-z0-9]+/i','',$memberNo));
+    $base=trim((string)preg_replace('/[^A-Za-z0-9._-]+/','',$memberNo),'.-_');
+    $base=$base ?: trim(strtolower((string)preg_replace('/[^a-z0-9]+/i','.',trim($fullName))),'.');
     $base=$base ?: 'member'; $candidate=$base; $n=1;
-    while(true){$s=$conn->prepare('SELECT id FROM users WHERE username=? LIMIT 1');$s->bind_param('s',$candidate);$s->execute();$exists=(bool)$s->get_result()->fetch_row();$s->close();if(!$exists)return $candidate;$candidate=$base.(++$n);}
+    while(true){$s=$conn->prepare('SELECT id FROM users WHERE username=? LIMIT 1');$s->bind_param('s',$candidate);$s->execute();$exists=(bool)$s->get_result()->fetch_row();$s->close();if(!$exists)return $candidate;$candidate=$base.'-'.(++$n);}
 }
 $res=$conn->query("SELECT id,member_no,full_name,email,phone,status FROM members WHERE user_id IS NULL ORDER BY id");
 $created=[];$conn->begin_transaction();
