@@ -137,7 +137,6 @@ $programRowsJson = json_encode(
 ?>
 
 <link rel="stylesheet" href="../assets/css/style.css">
-<link rel="stylesheet" href="../assets/css/theme.css">
 <link rel="stylesheet" href="../assets/css/church-admin.css">
 <link rel="stylesheet" href="../assets/css/church-programs.css">
 

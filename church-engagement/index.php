@@ -17,7 +17,6 @@ $stats=['programs'=>count($programs),'services'=>count($services),'live'=>(int)(
 function ce_admin_form_header(string $action,string $return): void { echo '<input type="hidden" name="csrf_token" value="'.ce_h(ce_csrf()).'"><input type="hidden" name="action" value="'.ce_h($action).'"><input type="hidden" name="return_to" value="'.ce_h($return).'">'; }
 ?>
 <link rel="stylesheet" href="../assets/css/style.css">
-<link rel="stylesheet" href="../assets/css/theme.css">
 <div class="main-content ce-module">
 <?php include '../includes/topbar.php'; ?>
 <div class="content-area">

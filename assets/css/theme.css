@@ -1,2 +1,0 @@
-:root{--primary:#4a1e8f;--primary-dk:#341564;--primary-lt:#6e4ba5;--accent:#d4a017;--accent-lt:#ddb345;--bg:#f3f2f8;--text:#1e1e2d;}
-.ce-module{--ce-primary:var(--primary);--ce-secondary:var(--accent);--ce-bg:var(--bg);--ce-border:color-mix(in srgb,var(--primary) 18%,#ffffff); }

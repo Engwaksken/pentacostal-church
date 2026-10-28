@@ -18,3 +18,6 @@ error_log
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Old generated theme file; theme colours now come from Settings at runtime
+/assets/css/theme.css
