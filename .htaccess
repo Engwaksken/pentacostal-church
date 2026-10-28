@@ -3,6 +3,8 @@ RewriteEngine On
 
 # Never serve the .env file (database login) or other dot-files such as .git.
 RewriteRule (^|/)\.(?!well-known/) - [F,L]
+# cPanel PHP settings file.
+RewriteRule (^|/)php\.ini$ - [F,L,NC]
 
 # Root entry point canonicalizes to the site root.
 RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$

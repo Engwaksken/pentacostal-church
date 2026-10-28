@@ -21,3 +21,7 @@ Thumbs.db
 
 # Old generated theme file; theme colours now come from Settings at runtime
 /assets/css/theme.css
+
+# Server PHP settings created by cPanel (MultiPHP INI Editor)
+/.user.ini
+/php.ini
