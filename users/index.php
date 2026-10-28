@@ -628,6 +628,107 @@ if (isset($_GET['users_api'])) {
             users_json(['success' => true, 'message' => 'User deactivated successfully.']);
         }
 
+        if ($action === 'bulk_update') {
+            $ids = array_values(array_unique(array_filter(
+                array_map('intval', (array)($_POST['ids'] ?? [])),
+                static fn(int $id): bool => $id > 0
+            )));
+            $operation = users_post('operation');
+            $role = users_post('role');
+
+            if ($ids === []) {
+                users_json(['success' => false, 'message' => 'Select at least one user.'], 422);
+            }
+            if (count($ids) > 500) {
+                users_json(['success' => false, 'message' => 'Select at most 500 users at a time.'], 422);
+            }
+            if (!in_array($operation, ['activate', 'deactivate', 'set_role'], true)) {
+                users_json(['success' => false, 'message' => 'Choose what to do with the selected users.'], 422);
+            }
+            if ($operation === 'set_role' && !users_role_allowed($conn, $role)) {
+                users_json(['success' => false, 'message' => 'Select a valid role.'], 422);
+            }
+
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $conn->prepare("SELECT id, full_name, username, role FROM users WHERE id IN ({$placeholders})");
+            if (!$stmt) {
+                throw new RuntimeException($conn->error);
+            }
+            $types = str_repeat('i', count($ids));
+            users_bind($stmt, $types, $ids);
+            $stmt->execute();
+            $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            $currentId = users_current_id();
+            $isSuperAdmin = users_current_role() === 'super_admin';
+            $changed = 0;
+            $skippedSelf = false;
+            $skippedSuper = 0;
+
+            if ($operation === 'set_role') {
+                $update = $conn->prepare('UPDATE users SET role = ? WHERE id = ?');
+            } else {
+                $update = $conn->prepare('UPDATE users SET status = ? WHERE id = ?');
+                $newStatus = $operation === 'activate' ? 'Active' : 'Inactive';
+            }
+            if (!$update) {
+                throw new RuntimeException($conn->error);
+            }
+
+            foreach ($targets as $target) {
+                $targetId = (int)$target['id'];
+                $name = (string)($target['full_name'] ?: $target['username']);
+
+                // Same rule as single Deactivate: nobody locks themselves out or changes their own role.
+                if ($targetId === $currentId && $operation !== 'activate') {
+                    $skippedSelf = true;
+                    continue;
+                }
+                if (!$isSuperAdmin && strtolower(trim((string)$target['role'])) === 'super_admin') {
+                    $skippedSuper++;
+                    continue;
+                }
+
+                if ($operation === 'set_role') {
+                    $update->bind_param('si', $role, $targetId);
+                    $update->execute();
+                    users_log($conn, 'user_updated', $targetId, 'Changed role of system user: ' . $name, [
+                        'role' => $role,
+                        'previous_role' => (string)$target['role'],
+                        'bulk' => true,
+                    ]);
+                } else {
+                    $update->bind_param('si', $newStatus, $targetId);
+                    $update->execute();
+                    users_log(
+                        $conn,
+                        $operation === 'activate' ? 'user_activated' : 'user_deactivated',
+                        $targetId,
+                        ($operation === 'activate' ? 'Activated' : 'Deactivated') . ' system user: ' . $name,
+                        ['bulk' => true]
+                    );
+                }
+                $changed++;
+            }
+            $update->close();
+
+            $done = match ($operation) {
+                'activate' => 'activated',
+                'deactivate' => 'deactivated',
+                default => 'moved to ' . users_role_label($role),
+            };
+            $message = $changed . ($changed === 1 ? ' user ' : ' users ') . $done . '.';
+            if ($skippedSelf) {
+                $message .= ' Your own account was skipped.';
+            }
+            if ($skippedSuper > 0) {
+                $message .= ' ' . $skippedSuper . ' Super Administrator account(s) were skipped.';
+            }
+
+            users_json(['success' => true, 'message' => $message, 'changed' => $changed]);
+        }
+
         users_json(['success' => false, 'message' => 'Unknown action.'], 400);
     } catch (mysqli_sql_exception $exception) {
         users_json(['success' => false, 'message' => 'Database error: ' . $exception->getMessage()], 500);
@@ -650,7 +751,6 @@ if (users_current_role() !== 'super_admin') {
 }
 
 include __DIR__ . '/../includes/header.php';
-echo '<link rel="stylesheet" href="../assets/css/style.css?v=' . time() . '">';
 include __DIR__ . '/../includes/sidebar.php';
 ?>
 <style>
@@ -666,6 +766,8 @@ include __DIR__ . '/../includes/sidebar.php';
 .users-page .table-footer{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 16px;border-top:1px solid var(--users-border);background:#fff}.users-page .pagination-info{color:var(--users-muted);font-size:13px}.users-page .pagination-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.users-page .page-btn{min-width:36px;height:36px;padding:0 10px;border:1px solid #dbe3ec;background:#fff;border-radius:8px;cursor:pointer;display:inline-grid;place-items:center;font-size:13px}.users-page .page-btn:hover:not(:disabled){background:#f8fafc}.users-page .page-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}.users-page .page-btn:disabled{opacity:.45;cursor:not-allowed}
 .users-page .user-alert{display:none;padding:12px 14px;margin:0 0 15px;border-radius:9px}.users-page .user-alert.show{display:block}.users-page .user-alert.error{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}.users-page .user-alert.success{background:#dcfce7;border:1px solid #86efac;color:#166534}
 .users-page .modal-layer{position:fixed;inset:0;background:rgba(15,23,42,.58);display:none;z-index:9998}.users-page .user-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}.users-page .modal-layer.open,.users-page .user-modal.open{display:flex}.users-page .modal-card{width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.25)}.users-page .modal-head,.users-page .modal-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--users-border)}.users-page .modal-foot{border-top:1px solid var(--users-border);border-bottom:0;justify-content:flex-end}.users-page .modal-body{padding:20px}.users-page .modal-close{border:0;background:transparent;font-size:28px;line-height:1;cursor:pointer}.users-page .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.users-page .form-group{margin-bottom:0}.users-page .form-group.full{grid-column:1/-1}.users-page .password-wrap{position:relative}.users-page .password-wrap input{padding-right:44px}.users-page .password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;padding:6px}.users-page .empty-state{text-align:center;padding:34px 15px;color:#64748b}.users-page .empty-state i{font-size:30px;margin-bottom:10px;opacity:.45}.users-page .loading-cell{text-align:center;padding:28px!important;color:#64748b}
+.users-page .select-cell{width:38px;min-width:38px;text-align:center!important}.users-page .select-cell input,.users-page .bulk-bar input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary,#4a1e8f);cursor:pointer}.users-page tr.is-selected td{background:var(--primary-fade,#f5f3ff)}
+.users-page .bulk-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--users-border);background:var(--users-bg);font-size:13px}.users-page .bulk-bar.show{display:flex}.users-page .bulk-count{font-weight:700;margin-right:auto}.users-page .bulk-bar select{width:auto;min-width:170px;height:32px;padding:4px 8px;font-size:13px}.users-page .bulk-role{display:flex;gap:6px;align-items:center}
 @media(max-width:1350px){.users-page .users-summary-grid{grid-template-columns:repeat(3,minmax(150px,1fr))}}
 @media(max-width:850px){.users-page .users-summary-grid{grid-template-columns:repeat(2,minmax(140px,1fr))}.users-page .table-footer{align-items:flex-start;flex-direction:column}.users-page .form-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.users-page .users-summary-grid{grid-template-columns:1fr 1fr;gap:9px}.users-page .users-stat-card{padding:12px;min-height:82px}.users-page .users-stat-icon{width:38px;height:38px;min-width:38px}.users-page .users-stat-card h3{font-size:20px}.users-page .role-stats-grid{grid-template-columns:1fr 1fr}}
@@ -757,10 +859,26 @@ include __DIR__ . '/../includes/sidebar.php';
         </div>
 
         <div class="card table-card">
+            <div class="bulk-bar" id="bulkBar" role="region" aria-label="Selected users">
+                <span class="bulk-count" id="bulkCount">0 selected</span>
+                <button type="button" class="btn btn-sm btn-success" data-bulk="activate"><i class="fas fa-user-check"></i> Activate</button>
+                <button type="button" class="btn btn-sm btn-danger" data-bulk="deactivate"><i class="fas fa-user-slash"></i> Deactivate</button>
+                <div class="bulk-role">
+                    <select id="bulkRole" class="form-control" aria-label="New role for selected users">
+                        <option value="">Change role to...</option>
+                        <?php foreach ($roleOptions as $roleValue => $roleLabel): ?>
+                            <option value="<?= users_h($roleValue) ?>"><?= users_h($roleLabel) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" data-bulk="set_role"><i class="fas fa-user-tag"></i> Apply</button>
+                </div>
+                <button type="button" class="btn btn-sm btn-light" id="bulkClear">Clear selection</button>
+            </div>
             <div class="table-responsive">
                 <table class="table users-table">
                     <thead>
                         <tr>
+                            <th class="select-cell"><input type="checkbox" id="selectAll" aria-label="Select all users on this page"></th>
                             <th>#</th>
                             <th>Full Name</th>
                             <th>Username</th>
@@ -773,7 +891,7 @@ include __DIR__ . '/../includes/sidebar.php';
                         </tr>
                     </thead>
                     <tbody id="usersBody">
-                        <tr><td colspan="9" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Loading users...</td></tr>
+                        <tr><td colspan="10" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Loading users...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -909,6 +1027,8 @@ include __DIR__ . '/../includes/sidebar.php';
     let currentPage = 1;
     let totalPages = 1;
     let searchTimer = null;
+    // Ticked users on the current page; cleared whenever the table reloads.
+    const selected = new Set();
 
     function escapeHtml(value) {
         return String(value ?? '').replace(/[&<>'"]/g, char => ({
@@ -1022,12 +1142,27 @@ include __DIR__ . '/../includes/sidebar.php';
         `).join('');
     }
 
+    function updateSelection() {
+        body.querySelectorAll('[data-select]').forEach(box => {
+            box.checked = selected.has(Number(box.dataset.select));
+            box.closest('tr').classList.toggle('is-selected', box.checked);
+        });
+        const count = selected.size;
+        const all = $('#selectAll');
+        all.checked = users.length > 0 && count === users.length;
+        all.indeterminate = count > 0 && count < users.length;
+        all.disabled = users.length === 0;
+        $('#bulkCount').textContent = `${count} user${count === 1 ? '' : 's'} selected`;
+        $('#bulkBar').classList.toggle('show', count > 0);
+    }
+
     function renderUsers(items, pagination) {
         users = items || [];
+        selected.clear();
 
         if (!users.length) {
             body.innerHTML = `
-                <tr><td colspan="9">
+                <tr><td colspan="10">
                     <div class="empty-state">
                         <i class="fas fa-users-slash"></i>
                         <div>No users found for the selected filters.</div>
@@ -1038,6 +1173,7 @@ include __DIR__ . '/../includes/sidebar.php';
             body.innerHTML = users.map((user, index) => {
                 const status = user.status_label || user.status || 'Inactive';
                 return `<tr>
+                    <td class="select-cell"><input type="checkbox" data-select="${user.id}" aria-label="Select ${escapeHtml(user.full_name || user.username || 'user')}"></td>
                     <td>${start + index}</td>
                     <td><strong>${escapeHtml(user.full_name || '-')}</strong></td>
                     <td>${escapeHtml(user.username || '-')}</td>
@@ -1065,6 +1201,7 @@ include __DIR__ . '/../includes/sidebar.php';
             : 'Showing 0 users';
 
         renderPagination(pagination);
+        updateSelection();
     }
 
     function renderPagination(pagination) {
@@ -1100,7 +1237,7 @@ include __DIR__ . '/../includes/sidebar.php';
     async function loadUsers({resetPage = false} = {}) {
         if (resetPage) currentPage = 1;
 
-        body.innerHTML = '<tr><td colspan="9" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Loading users...</td></tr>';
+        body.innerHTML = '<tr><td colspan="10" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Loading users...</td></tr>';
 
         const data = await api('list', {params: queryParams()});
         renderStats(data.stats || {}, data.role_stats || []);
@@ -1244,6 +1381,66 @@ include __DIR__ . '/../includes/sidebar.php';
             }
         } catch (error) {
             alertBox($('#pageAlert'), error.message);
+        }
+    });
+
+    body.addEventListener('change', event => {
+        const box = event.target.closest('[data-select]');
+        if (!box) return;
+        const id = Number(box.dataset.select);
+        if (box.checked) selected.add(id); else selected.delete(id);
+        updateSelection();
+    });
+
+    $('#selectAll').addEventListener('change', event => {
+        selected.clear();
+        if (event.target.checked) users.forEach(user => selected.add(Number(user.id)));
+        updateSelection();
+    });
+
+    $('#bulkClear').addEventListener('click', () => {
+        selected.clear();
+        updateSelection();
+    });
+
+    $('#bulkBar').addEventListener('click', async event => {
+        const button = event.target.closest('[data-bulk]');
+        if (!button || selected.size === 0) return;
+
+        const operation = button.dataset.bulk;
+        const role = $('#bulkRole').value;
+        const count = selected.size;
+        const who = `${count} selected user${count === 1 ? '' : 's'}`;
+
+        if (operation === 'set_role' && !role) {
+            alertBox($('#pageAlert'), 'Choose the new role first.');
+            $('#bulkRole').focus();
+            return;
+        }
+        const question = {
+            activate: `Activate ${who}?`,
+            deactivate: `Deactivate ${who}? They will not be able to sign in.`,
+            set_role: `Change the role of ${who} to ${$('#bulkRole').selectedOptions[0].textContent.trim()}?`,
+        }[operation];
+        if (!window.confirm(question)) return;
+
+        const formData = new FormData();
+        formData.set('csrf_token', <?= json_encode($csrfToken) ?>);
+        formData.set('operation', operation);
+        if (operation === 'set_role') formData.set('role', role);
+        selected.forEach(id => formData.append('ids[]', String(id)));
+
+        const buttons = $('#bulkBar').querySelectorAll('button, select');
+        buttons.forEach(control => { control.disabled = true; });
+        try {
+            const data = await api('bulk_update', {method: 'POST', body: formData});
+            $('#bulkRole').value = '';
+            alertBox($('#pageAlert'), data.message, 'success');
+            await loadUsers();
+        } catch (error) {
+            alertBox($('#pageAlert'), error.message);
+        } finally {
+            buttons.forEach(control => { control.disabled = false; });
         }
     });
 
