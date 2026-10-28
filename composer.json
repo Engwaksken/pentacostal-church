@@ -1,6 +1,6 @@
 {
     "name": "rongoro-cou/church-cms",
-    "description": "Rongoro Church of Uganda - Church Management System",
+    "description": "Church Management System",
     "type": "project",
     "require": {
         "php": ">=7.4",

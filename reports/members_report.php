@@ -66,7 +66,7 @@ ob_start();
     Total: <?= number_format($total) ?> members
   </div>
 
-  <h1>CHURCH OF UGANDA</h1>
+  <h1><?= e(strtoupper(APP_NAME)) ?></h1>
   <h3>Active Members Register</h3>
   <div class="subtitle">Official Members Report &mdash; Confidential</div>
 </div>

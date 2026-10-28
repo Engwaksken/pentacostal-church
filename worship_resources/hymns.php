@@ -21,7 +21,7 @@ $fields = ['hymn_number', 'title', 'hymn_book', 'language', 'author', 'tune', 't
 <div class="main-content"><?php include '../includes/topbar.php'; ?><div class="content-area">
 <?php ce_show_flash(); ?>
 <div class="church-page-head">
-    <div><h2><i class="fas fa-music"></i> Church of Uganda Hymns</h2><p>Hymn information members can read and study. Lyrics are optional and may only be entered when the church may reproduce them.</p></div>
+    <div><h2><i class="fas fa-music"></i> Hymns</h2><p>Hymn information members can read and study. Lyrics are optional and may only be entered when the church may reproduce them.</p></div>
     <?php if ($ready): ?><button type="button" class="btn btn-primary" id="addBtn"><i class="fas fa-plus"></i> Add Hymn</button><?php endif; ?>
 </div>
 <?php mc_worship_tabs('hymns'); ?>

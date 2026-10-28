@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-$pageTitle = 'Church of Uganda Hymns';
+$pageTitle = 'Hymns';
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/_helpers.php';
 require_permission('member.worship.view');
@@ -24,7 +24,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <div class="content-area member-module-page">
 <?php if ($hymn): ?>
 <div class="member-module-header">
-  <div><h2><i class="fas fa-music"></i> <?= $hymn['hymn_number'] ? mp_h('#' . $hymn['hymn_number']) . ' ' : '' ?><?= mp_h($hymn['title']) ?></h2><p><?= mp_h($hymn['hymn_book'] ?: 'Church of Uganda Hymns') ?></p></div>
+  <div><h2><i class="fas fa-music"></i> <?= $hymn['hymn_number'] ? mp_h('#' . $hymn['hymn_number']) . ' ' : '' ?><?= mp_h($hymn['title']) ?></h2><p><?= mp_h($hymn['hymn_book'] ?: 'Hymns') ?></p></div>
   <div class="member-module-actions"><a class="btn btn-outline-primary" href="hymns.php"><i class="fas fa-arrow-left"></i> All Hymns</a></div>
 </div>
 <div class="member-module-card"><div class="member-module-body">
@@ -43,7 +43,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </div></div>
 <?php else: ?>
 <div class="member-module-header">
-  <div><h2><i class="fas fa-music"></i> Church of Uganda Hymns</h2><p>Read and study hymns in your free time.</p></div>
+  <div><h2><i class="fas fa-music"></i> Hymns</h2><p>Read and study hymns in your free time.</p></div>
 </div>
 <?php if ($hymnId > 0): ?><div class="member-info-banner"><i class="fas fa-circle-info"></i> That hymn is not available.</div><?php endif; ?>
 <div class="page-toolbar"><div class="page-toolbar-search"><i class="fas fa-search"></i><input type="search" data-member-search placeholder="Search hymns by number, title or author..." aria-label="Search hymns"></div><div class="page-toolbar-filters">

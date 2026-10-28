@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Shared rules for member-facing church content: Health/Education department tips,
- * dashboard Bible verses, Orders of Service and Church of Uganda hymns.
+ * dashboard Bible verses, Orders of Service and hymns.
  * Tables are created by database/member_content.sql.
  */
 

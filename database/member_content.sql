@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS bible_verses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- CHURCH OF UGANDA HYMNS
+-- HYMNS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS church_hymns (
@@ -119,7 +119,7 @@ INSERT INTO permissions(permission_key,permission_name,module_name) VALUES
 ('member.tips.view','View published Health and Education Department tips','Department Tips'),
 ('bible_verses.manage','Add, edit, publish and delete dashboard Bible verses','Worship Resources'),
 ('order_of_service.manage','Add, edit, publish and delete Orders of Service','Worship Resources'),
-('hymns.manage','Add, edit, publish and delete Church of Uganda hymns','Worship Resources'),
+('hymns.manage','Add, edit, publish and delete hymns','Worship Resources'),
 ('member.worship.view','View published Orders of Service and hymns','Worship Resources')
 ON DUPLICATE KEY UPDATE permission_name=VALUES(permission_name),module_name=VALUES(module_name);
 

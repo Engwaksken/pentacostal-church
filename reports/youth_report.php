@@ -317,7 +317,7 @@ include '../includes/sidebar.php';
 <table class="header-table">
     <tr>
         <td>
-            <div class="organisation-name">CHURCH OF UGANDA</div>
+            <div class="organisation-name"><?= e(strtoupper(APP_NAME)) ?></div>
             <div class="report-title">Youth Register &amp; Project Participation</div>
             <div class="subtitle">Youth Empowerment Programme</div>
         </td>

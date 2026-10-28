@@ -72,7 +72,7 @@ ob_start();
     Generated: <?= e($generated) ?>
   </div>
 
-  <h1>CHURCH OF UGANDA</h1>
+  <h1><?= e(strtoupper(APP_NAME)) ?></h1>
   <h3>Attendance Summary Report</h3>
   <div class="subtitle">Period: <?= e(fmtDate($from)) ?> &mdash; <?= e(fmtDate($to)) ?></div>
 </div>
