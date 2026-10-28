@@ -274,7 +274,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? $_SESSION['csrf'] ?? '';
 .share-url-row{display:flex;gap:8px;margin-bottom:10px}
 .share-url-row input{flex:1;border:1px solid #d1d5db;border-radius:10px;padding:9px 10px;font-size:13px;background:#f8fafc}
 .share-meta{display:flex;justify-content:space-between;align-items:center;font-size:13px}
-.share-meta a{color:#4a1e8f;font-weight:700;text-decoration:none}
+.share-meta a{color:var(--primary);font-weight:700;text-decoration:none}
 @media(max-width:950px){.attendance-stats-grid,.attendance-members-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.attendance-form-grid,.attendance-view-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.attendance-stats-grid,.attendance-members-grid,.attendance-form-grid,.attendance-view-stats{grid-template-columns:1fr}.attendance-search,.attendance-member-actions input{min-width:100%;max-width:100%;width:100%}.attendance-member-actions{width:100%}.attendance-header-actions{width:100%}.attendance-header-actions .btn{flex:1}}
 

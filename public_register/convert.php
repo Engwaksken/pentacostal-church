@@ -305,7 +305,7 @@ if ($prefillVisitor) {
         .pr-plan strong{color:#044e3a}.pr-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
         .pr-check{display:flex;align-items:flex-start;gap:9px;padding:10px 0}.pr-check input{margin-top:3px}
     </style>
-</head>
+<?= site_theme_css() ?></head>
 <body>
 <div class="pr-wrap">
     <div class="pr-card">

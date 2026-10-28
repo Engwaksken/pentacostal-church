@@ -54,7 +54,7 @@
 }
 
 .announcement-stat-filter:focus-visible {
-    outline: 3px solid var(--accent, #d7df21);
+    outline: 3px solid var(--accent, #d4a017);
     outline-offset: 2px;
 }
 
@@ -112,7 +112,7 @@
 
 .announcement-schedule span i {
     flex: 0 0 auto;
-    color: var(--primary, #05645b);
+    color: var(--primary, #4a1e8f);
 }
 
 .announcement-schedule small {
@@ -225,14 +225,14 @@
 }
 
 .announcement-department-option:hover {
-    border-color: var(--primary, #05645b);
-    background: var(--primary-fade, rgba(5, 100, 91, 0.08));
+    border-color: var(--primary, #4a1e8f);
+    background: var(--primary-fade, rgba(74, 30, 143, 0.08));
 }
 
 .announcement-department-option:has(input:checked) {
-    border-color: var(--primary, #05645b);
-    background: var(--primary-fade, rgba(5, 100, 91, 0.08));
-    box-shadow: 0 0 0 2px rgba(5, 100, 91, 0.08);
+    border-color: var(--primary, #4a1e8f);
+    background: var(--primary-fade, rgba(74, 30, 143, 0.08));
+    box-shadow: 0 0 0 2px var(--primary-fade, rgba(74, 30, 143, 0.08));
 }
 
 .announcement-department-option input {
@@ -240,7 +240,7 @@
     width: 16px !important;
     height: 16px;
     margin: 0 !important;
-    accent-color: var(--primary, #05645b);
+    accent-color: var(--primary, #4a1e8f);
 }
 
 .announcement-department-option span {
@@ -279,7 +279,7 @@
 
 .announcement-view-head h3 {
     margin: 12px 0 8px;
-    color: var(--primary, #05645b);
+    color: var(--primary, #4a1e8f);
     font-size: 21px;
     line-height: 1.3;
     overflow-wrap: anywhere;
@@ -416,7 +416,7 @@ body.cms-modal-open {
 
 .church-modal-header h3 i {
     flex: 0 0 auto;
-    color: var(--primary, #05645b);
+    color: var(--primary, #4a1e8f);
 }
 
 .church-modal-body {
@@ -473,7 +473,7 @@ body.cms-modal-open {
 }
 
 .church-modal-close:focus-visible {
-    outline: 3px solid var(--accent, #d7df21);
+    outline: 3px solid var(--accent, #d4a017);
     outline-offset: 2px;
 }
 

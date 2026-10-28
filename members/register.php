@@ -301,14 +301,14 @@ if($_SERVER['REQUEST_METHOD']==='POST' && !$invalidInvite){
 <link rel="stylesheet" href="../assets/css/church-admin.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-:root{--reg-primary:#2e3192;--reg-bg:#f5f7fb;--reg-border:#e5e7eb;--reg-text:#172033;--reg-muted:#64748b}
+:root{--reg-primary:var(--primary);--reg-bg:#f5f7fb;--reg-border:#e5e7eb;--reg-text:#172033;--reg-muted:#64748b}
 *{box-sizing:border-box}.reg-page{min-height:100vh;background:linear-gradient(135deg,#f7f8ff,#eef7fb);padding:28px 16px;color:var(--reg-text)}
 .reg-wrap{max-width:900px;margin:0 auto}.reg-brand{text-align:center;margin:6px 0 22px}.reg-brand .brand-logo{display:flex;align-items:center;justify-content:center;min-height:76px}.reg-brand .site-logo{display:block;max-width:220px;max-height:90px;width:auto;height:auto;object-fit:contain}.reg-brand .icon{width:64px;height:64px;margin:auto;border-radius:18px;background:var(--reg-primary);color:#fff;display:grid;place-items:center;font-size:27px;box-shadow:0 10px 28px rgba(46,49,146,.22)}
 .reg-brand h1{font-size:28px;margin:12px 0 5px}.reg-brand p{margin:0;color:var(--reg-muted)}
 .reg-card{background:#fff;border:1px solid var(--reg-border);border-radius:20px;box-shadow:0 16px 50px rgba(15,23,42,.08);overflow:hidden}.reg-head{padding:20px 24px;border-bottom:1px solid var(--reg-border);background:#fbfcff}.reg-head h2{margin:0 0 4px;font-size:20px}.reg-head p{margin:0;color:var(--reg-muted);font-size:14px}.reg-body{padding:24px}.reg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.reg-group label{display:block;font-weight:600;font-size:13px;margin:0 0 7px}.reg-group input,.reg-group select,.reg-group textarea{width:100%;border:1px solid #d9deea;border-radius:10px;padding:11px 12px;background:#fff;font:inherit;color:inherit}.reg-group input:focus,.reg-group select:focus,.reg-group textarea:focus{outline:none;border-color:var(--reg-primary);box-shadow:0 0 0 3px rgba(46,49,146,.09)}.reg-span-2{grid-column:span 2}.pwd-wrap{position:relative}.pwd-wrap input{padding-right:44px}.pwd-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:0;background:transparent;width:34px;height:34px;cursor:pointer;color:#64748b}.reg-actions{display:flex;justify-content:flex-end;margin-top:22px}.reg-btn{border:0;border-radius:10px;padding:12px 18px;background:var(--reg-primary);color:#fff;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}.reg-alert{padding:13px 15px;border-radius:11px;margin:0 0 18px}.reg-alert.error{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}.reg-alert.success{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}.reg-invalid{text-align:center;padding:44px 24px}.reg-invalid i{font-size:44px;color:#dc2626;margin-bottom:14px}.hp{position:absolute!important;left:-9999px!important;opacity:0!important}
 @media(max-width:680px){.reg-grid{grid-template-columns:1fr}.reg-span-2{grid-column:span 1}.reg-body{padding:18px}.reg-head{padding:18px}.reg-brand h1{font-size:23px}}
 </style>
-</head>
+<?= site_theme_css() ?></head>
 <body>
 <div class="reg-page"><div class="reg-wrap">
     <div class="reg-brand">

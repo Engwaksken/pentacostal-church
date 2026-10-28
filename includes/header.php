@@ -129,30 +129,9 @@ $pageTitleText = isset($pageTitle) && trim((string)$pageTitle) !== ''
 <?php endif; ?>
 
 <link rel="stylesheet" href="<?= h(BASE_URL . 'assets/css/style.css?v=' . (int) @filemtime(__DIR__ . '/../assets/css/style.css')) ?>">
-<?php
-$themeColors = [
-    'primary' => cms_setting($conn, 'primary_color', '#4a1e8f'),
-    'accent' => cms_setting($conn, 'secondary_color', '#d4a017'),
-    'bg' => cms_setting($conn, 'background_color', '#f3f2f8'),
-    'text' => cms_setting($conn, 'text_color', '#1e1e2d'),
-];
-foreach ($themeColors as $key => $value) {
-    if (!preg_match('/^#[0-9a-fA-F]{6}$/', $value)) {
-        $themeColors[$key] = ['primary' => '#4a1e8f', 'accent' => '#d4a017', 'bg' => '#f3f2f8', 'text' => '#1e1e2d'][$key];
-    }
-}
-$adjustThemeColor = static function (string $hex, int $percent): string {
-    $rgb = array_map('hexdec', str_split(substr($hex, 1), 2));
-    foreach ($rgb as &$channel) {
-        $channel = (int) round($channel + ($percent / 100) * ($percent < 0 ? $channel : 255 - $channel));
-    }
-    unset($channel);
-    return sprintf('#%02x%02x%02x', ...$rgb);
-};
-?>
-<style>:root{--primary:<?= h($themeColors['primary']) ?>;--primary-dk:<?= h($adjustThemeColor($themeColors['primary'], -30)) ?>;--primary-lt:<?= h($adjustThemeColor($themeColors['primary'], 20)) ?>;--primary-fade:color-mix(in srgb, <?= h($themeColors['primary']) ?> 8%, transparent);--accent:<?= h($themeColors['accent']) ?>;--accent-lt:<?= h($adjustThemeColor($themeColors['accent'], 20)) ?>;--bg:<?= h($themeColors['bg']) ?>;--text:<?= h($themeColors['text']) ?>}</style>
+<?= site_theme_css() ?>
 <link rel="manifest" href="<?= h(BASE_URL . 'manifest.webmanifest') ?>">
-<meta name="theme-color" content="<?= h($themeColors['primary'] ?? '#4a1e8f') ?>">
+<meta name="theme-color" content="<?= h(preg_match('/^#[0-9a-fA-F]{6}$/', site_brand()['primary']) ? site_brand()['primary'] : '#4a1e8f') ?>">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">

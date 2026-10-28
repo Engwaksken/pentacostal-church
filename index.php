@@ -77,12 +77,12 @@ $csrfToken = login_csrf_token();
 }
 .password-toggle-btn:hover,
 .password-toggle-btn:focus-visible {
-  color: #05645b;
+  color: var(--primary);
   background: rgba(5, 100, 91, 0.08);
   outline: none;
 }
 </style>
-</head>
+<?= site_theme_css() ?></head>
 
 <body>
 <div class="login-page">

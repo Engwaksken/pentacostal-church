@@ -310,7 +310,7 @@ try {
 /* -- Layout ------------------------------------------- */
 .ss-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:20px}
 .ss-stat-card{background:#fff;border:1px solid rgba(148,163,184,.25);border-radius:16px;padding:18px;box-shadow:0 10px 25px rgba(15,23,42,.08);display:flex;align-items:center;gap:14px}
-.ss-stat-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(74,30,143,.12);color:#4a1e8f;font-size:22px}
+.ss-stat-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);font-size:22px}
 .ss-stat-value{font-size:26px;font-weight:800;line-height:1}
 .ss-stat-label{font-size:13px;color:#64748b;margin-top:4px}
 
@@ -321,7 +321,7 @@ try {
 /* -- Tabs --------------------------------------------- */
 .ss-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
 .ss-tab{border:1px solid #d1d5db;background:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
-.ss-tab.active{background:#4a1e8f;color:#fff;border-color:#4a1e8f}
+.ss-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
 /* -- Toolbar ------------------------------------------ */
 .ss-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
@@ -332,9 +332,9 @@ try {
 /* -- Class cards -------------------------------------- */
 .ss-class-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .ss-class-card{background:#fff;border-radius:16px;border:1px solid rgba(148,163,184,.25);box-shadow:0 8px 20px rgba(15,23,42,.06);overflow:hidden}
-.ss-class-head{background:#4a1e8f;color:#fff;padding:14px 16px}
+.ss-class-head{background:var(--primary);color:#fff;padding:14px 16px}
 .ss-class-body{padding:16px}
-.ss-class-count{text-align:center;font-size:42px;font-weight:800;color:#4a1e8f}
+.ss-class-count{text-align:center;font-size:42px;font-weight:800;color:var(--primary)}
 
 /* -- Modals ------------------------------------------- */
 .ss-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:9998;display:none}
@@ -385,7 +385,7 @@ try {
 .ss-row-num{font-weight:800;color:#64748b;text-align:center;padding-top:8px}
 .ss-remove-row{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center}
 
-.ss-pupil-filters{flex:1;min-width:0}.ss-pupil-filters select,.ss-pupil-filters input[type="date"]{min-width:145px}.ss-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}.ss-pagination-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #e5e7eb}.ss-pagination{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.ss-page-btn{min-width:36px;height:36px;padding:0 10px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#334155;font-weight:700;cursor:pointer}.ss-page-btn:hover:not(:disabled),.ss-page-btn.active{background:#4a1e8f;border-color:#4a1e8f;color:#fff}.ss-page-btn:disabled{opacity:.45;cursor:not-allowed}
+.ss-pupil-filters{flex:1;min-width:0}.ss-pupil-filters select,.ss-pupil-filters input[type="date"]{min-width:145px}.ss-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}.ss-pagination-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #e5e7eb}.ss-pagination{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.ss-page-btn{min-width:36px;height:36px;padding:0 10px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#334155;font-weight:700;cursor:pointer}.ss-page-btn:hover:not(:disabled),.ss-page-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}.ss-page-btn:disabled{opacity:.45;cursor:not-allowed}
 /* -- Responsive --------------------------------------- */
 @media(max-width:992px){
   .ss-stats-grid,.ss-class-grid,.ss-att-grid{grid-template-columns:repeat(2,minmax(0,1fr))}

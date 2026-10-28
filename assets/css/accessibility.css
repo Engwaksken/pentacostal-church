@@ -1,20 +1,20 @@
 .accessibility-widget{position:fixed;right:18px;bottom:18px;z-index:12000;font-family:Arial,sans-serif;color:#172033}
-.accessibility-launcher{display:flex;align-items:center;gap:8px;padding:11px 15px;border:2px solid #fff;border-radius:999px;background:#4a1e8f;color:#fff;font:inherit;font-size:13px;font-weight:700;line-height:1.2;box-shadow:0 5px 20px #1114;cursor:pointer}
+.accessibility-launcher{display:flex;align-items:center;gap:8px;padding:11px 15px;border:2px solid #fff;border-radius:999px;background:var(--primary,#4a1e8f);color:#fff;font:inherit;font-size:13px;font-weight:700;line-height:1.2;box-shadow:0 5px 20px #1114;cursor:pointer}
 .accessibility-launcher i{font-size:18px}
 .accessibility-panel{position:absolute;right:0;bottom:58px;width:min(330px,calc(100vw - 28px));padding:0;background:#fff;border:1px solid #d7dce5;border-radius:14px;box-shadow:0 16px 48px #10182830;overflow:hidden}
 .accessibility-panel[hidden]{display:none}
-.accessibility-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:#4a1e8f;color:#fff}
+.accessibility-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:var(--primary,#4a1e8f);color:#fff}
 .accessibility-panel-head h2{margin:0;font-size:16px;color:inherit}
 .accessibility-panel-head button{width:32px;height:32px;border:0;border-radius:7px;background:#ffffff22;color:#fff;font-size:24px;cursor:pointer}
 .accessibility-controls{display:grid;gap:7px;padding:12px}
 .accessibility-controls>button,.accessibility-control-row button{min-height:40px;padding:8px 10px;border:1px solid #d9deea;border-radius:8px;background:#fff;color:#172033;font:600 13px Arial,sans-serif;text-align:left;cursor:pointer}
-.accessibility-controls button:hover,.accessibility-controls button:focus-visible{outline:3px solid #c7b6e7;outline-offset:1px}
-.accessibility-controls button[aria-pressed="true"]{border-color:#4a1e8f;background:#f2ebfb;color:#37136c}
+.accessibility-controls button:hover,.accessibility-controls button:focus-visible{outline:3px solid color-mix(in srgb,var(--primary,#4a1e8f) 40%,#fff);outline-offset:1px}
+.accessibility-controls button[aria-pressed="true"]{border-color:var(--primary,#4a1e8f);background:color-mix(in srgb,var(--primary,#4a1e8f) 10%,#fff);color:var(--primary-dk,#37136c)}
 .accessibility-control-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0 7px;border-bottom:1px solid #e5e7eb;font-size:13px;font-weight:700}
 .accessibility-control-row>div{display:flex;gap:6px}
 .accessibility-control-row button{min-width:48px;text-align:center}
 .accessibility-controls .accessibility-reset{border-color:#b42318;color:#b42318}
-.accessibility-controls .accessibility-install{background:#4a1e8f;color:#fff;border-color:#4a1e8f;text-align:center}
+.accessibility-controls .accessibility-install{background:var(--primary,#4a1e8f);color:#fff;border-color:var(--primary,#4a1e8f);text-align:center}
 .accessibility-install-help{margin:2px 0 0;color:#475467;font-size:12px;line-height:1.5}
 html.a11y-high-contrast{filter:contrast(1.35)}
 html.a11y-grayscale{filter:grayscale(1)}
@@ -31,11 +31,11 @@ html.a11y-reduce-motion *,html.a11y-reduce-motion *::before,html.a11y-reduce-mot
 .accessibility-controls h3{margin:7px 0 2px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;color:#344054;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
 .accessibility-select-label{display:flex;justify-content:space-between;gap:8px;color:#344054;font-size:12px;font-weight:700}
 .accessibility-controls select,.accessibility-controls input[type=range]{width:100%;min-height:38px;padding:7px 9px;border:1px solid #cbd2de;border-radius:8px;background:#fff;color:#172033;font:14px Arial,sans-serif}
-.accessibility-controls input[type=range]{min-height:24px;padding:0;accent-color:#4a1e8f}
+.accessibility-controls input[type=range]{min-height:24px;padding:0;accent-color:var(--primary,#4a1e8f)}
 .accessibility-speech{display:grid;gap:7px;padding:10px;border:1px solid #e2e6ee;border-radius:10px;background:#f8fafc}
 .accessibility-speech-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .accessibility-speech-actions button{min-height:38px;padding:7px;border:1px solid #d9deea;border-radius:8px;background:#fff;color:#172033;font:600 12px Arial,sans-serif;cursor:pointer}
-.accessibility-speech-actions button:first-child{grid-column:1/-1;background:#4a1e8f;border-color:#4a1e8f;color:#fff}
+.accessibility-speech-actions button:first-child{grid-column:1/-1;background:var(--primary,#4a1e8f);border-color:var(--primary,#4a1e8f);color:#fff}
 .accessibility-speech-status{min-height:16px;margin:0;color:#475467;font-size:11px}
 .accessibility-voice-note{margin:0;color:#475467;font-size:11px;line-height:1.45}
 html.a11y-dark{filter:invert(1) hue-rotate(180deg)}
@@ -46,8 +46,8 @@ html.a11y-yellow :is(h1,h2,h3,h4,h5,h6,p,span,label,td,th,a,small,strong,li){col
 html.a11y-underline-links a:focus,html.a11y-underline-links a:hover{outline:2px solid currentColor;outline-offset:2px}
 html.a11y-readable,html.a11y-readable body,html.a11y-readable button,html.a11y-readable input,html.a11y-readable select,html.a11y-readable textarea{font-family:Verdana,Arial,Helvetica,sans-serif!important;letter-spacing:.06em;word-spacing:.12em}
 html.a11y-line-spacing body,html.a11y-line-spacing p,html.a11y-line-spacing li,html.a11y-line-spacing td,html.a11y-line-spacing label{line-height:1.9!important}
-html.a11y-highlight-headings :is(h1,h2,h3,h4,h5,h6){outline:2px solid #d4a017;outline-offset:3px;border-radius:3px}
+html.a11y-highlight-headings :is(h1,h2,h3,h4,h5,h6){outline:2px solid var(--accent,#d4a017);outline-offset:3px;border-radius:3px}
 html.a11y-large-cursor,html.a11y-large-cursor *{cursor:url('/assets/img/large-cursor.svg') 4 2,auto!important}
-#accessibilityReadingRuler{display:none;position:fixed;z-index:11999;left:0;right:0;top:45vh;height:34px;border-top:2px solid #d4a017;border-bottom:2px solid #d4a017;background:#fef3c766;pointer-events:none}
+#accessibilityReadingRuler{display:none;position:fixed;z-index:11999;left:0;right:0;top:45vh;height:34px;border-top:2px solid var(--accent,#d4a017);border-bottom:2px solid var(--accent,#d4a017);background:#fef3c766;pointer-events:none}
 html.a11y-ruler #accessibilityReadingRuler{display:block}
 @media(max-width:520px){.accessibility-panel{max-height:78vh}}

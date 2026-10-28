@@ -1358,7 +1358,7 @@ include __DIR__ . '/../includes/sidebar.php';
 
 <style>
 .profile-page {
-    --profile-primary: #4b1f91;
+    --profile-primary: var(--primary);
     --profile-primary-soft: #f4effb;
     --profile-border: #e2e6ec;
     --profile-text: #19202b;

@@ -1,6 +1,6 @@
 <?php
 define('APP_VERSION', '1.0.0');
-define('BASE_URL', 'https://cou.kemmytech.com/');
+define('BASE_URL', 'https://pentacostal.kemmytech.com/');
 define('UPLOAD_PATH', __DIR__ . '/../assets/uploads/');
 
 if (session_status() === PHP_SESSION_NONE) session_start();

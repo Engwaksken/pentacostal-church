@@ -136,7 +136,7 @@ $positions = ['Member','Chairman','Vice Chairman','Secretary','Treasurer','Chapl
     <div class="stats-grid module-stats-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
 
         <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(74,30,143,.12);color:var(--primary)">
+            <div class="stat-icon" style="background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary)">
                 <i class="fas fa-users"></i>
             </div>
             <div class="stat-body">

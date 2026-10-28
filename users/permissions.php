@@ -673,7 +673,7 @@ foreach ($permissions as $permission) {
 .permissions-page>.card{border:1px solid #e5eaf1;border-radius:16px;box-shadow:0 8px 26px rgba(15,23,42,.06);overflow:hidden}
 .permissions-page>.card>.card-body{padding:24px}
 .permission-page-header{display:flex;align-items:center;justify-content:flex-start;gap:14px;padding:20px 24px;background:linear-gradient(110deg,#fff 0%,#f7f5fc 100%);border-bottom:1px solid #e8eaf0}
-.permission-heading-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:14px;background:#eee8f8;color:#4a1e8f;font-size:20px}
+.permission-heading-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:14px;background:var(--primary-fade,#f1ebfa);color:var(--primary);font-size:20px}
 .permission-heading-copy{min-width:0;flex:1}
 .permission-heading-copy h3{margin:0 0 4px;color:#172033;font-size:20px;font-weight:800}
 .permission-heading-copy small{color:#64748b;font-size:13px}
@@ -685,7 +685,7 @@ foreach ($permissions as $permission) {
 .permission-target-card .form-control{border-color:#d7dde6;border-radius:9px}
 .permission-target-card .permission-multi-select{min-height:220px;background:#fff}
 .permission-target-actions{margin-top:14px}
-.permission-summary{padding:16px 18px;border:1px solid #d9d2ec;border-left:4px solid #4a1e8f;border-radius:11px;background:#faf8ff;color:#344054;line-height:1.55}
+.permission-summary{padding:16px 18px;border:1px solid #d9d2ec;border-left:4px solid var(--primary);border-radius:11px;background:#faf8ff;color:#344054;line-height:1.55}
 .permission-summary small{display:inline-block;margin-top:5px;color:#667085}
 .permission-modules{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:14px}
 .permission-module{border:1px solid #e3e8ef;border-radius:12px;box-shadow:0 2px 8px rgba(15,23,42,.035)}
@@ -694,7 +694,7 @@ foreach ($permissions as $permission) {
 .permission-module-heading label{display:flex;align-items:center;gap:7px;margin:0;color:#475467;font-size:11px;font-weight:650}
 .permission-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;padding:12px}
 .permission-item{min-height:68px;gap:10px;padding:10px;border-radius:9px;border-color:#e6eaf0;background:#fff}
-.permission-item input{width:16px;height:16px;accent-color:#4a1e8f;flex:0 0 auto}
+.permission-item input{width:16px;height:16px;accent-color:var(--primary);flex:0 0 auto}
 .permission-item strong{color:#25324a;font-size:12px;line-height:1.35}
 .permission-item small{font-size:10px;overflow-wrap:anywhere}
 .permission-partial{background:#fffcf0;border-color:#eadba7}

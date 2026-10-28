@@ -126,20 +126,20 @@ $invalid = !$session;
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:linear-gradient(160deg,#4a1e8f,#7c3aed);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:linear-gradient(160deg,var(--primary),var(--primary-lt));min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
   .pc-card{background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);max-width:420px;width:100%;overflow:hidden}
-  .pc-header{padding:26px 24px 18px;text-align:center;background:linear-gradient(160deg,#4a1e8f,#7c3aed);color:#fff}
+  .pc-header{padding:26px 24px 18px;text-align:center;background:linear-gradient(160deg,var(--primary),var(--primary-lt));color:#fff}
   .pc-header i{font-size:34px;margin-bottom:8px}
   .pc-header h1{font-size:19px;margin:6px 0 2px}
   .pc-header p{margin:0;opacity:.9;font-size:14px}
   .pc-body{padding:22px 24px 26px}
   .pc-search{position:relative;margin-bottom:12px}
   .pc-search input{width:100%;padding:13px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:15px}
-  .pc-search input:focus{outline:none;border-color:#7c3aed}
+  .pc-search input:focus{outline:none;border-color:var(--primary)}
   .pc-results{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto}
   .pc-result{border:1.5px solid #e2e8f0;border-radius:12px;padding:11px 13px;cursor:pointer;transition:.15s}
-  .pc-result:hover{border-color:#7c3aed;background:#faf5ff}
-  .pc-result strong{display:block;font-size:15px;color:#1e1b4b}
+  .pc-result:hover{border-color:var(--primary);background:var(--primary-fade)}
+  .pc-result strong{display:block;font-size:15px;color:var(--primary-dk)}
   .pc-result small{color:#64748b}
   .pc-empty{color:#94a3b8;font-size:14px;text-align:center;padding:14px 0}
   .pc-status{display:none;text-align:center;padding:26px 6px}
@@ -153,7 +153,7 @@ $invalid = !$session;
   .pc-footer{text-align:center;font-size:12px;color:#94a3b8;padding:0 24px 20px}
   .pc-hidden{display:none}
 </style>
-</head>
+<?= site_theme_css() ?></head>
 <body>
 <div class="pc-card">
 

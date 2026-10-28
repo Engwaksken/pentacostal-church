@@ -141,14 +141,14 @@ $secondsRemaining = max(0, $expiresAt - time());
   background: transparent;
   padding: 5px 7px;
   cursor: pointer;
-  color: #05645b;
+  color: var(--primary);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
 }
 .otp-link-button:hover { text-decoration: underline; }
 </style>
-</head>
+<?= site_theme_css() ?></head>
 
 <body>
 <div class="login-page">

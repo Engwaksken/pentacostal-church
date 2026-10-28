@@ -27,7 +27,7 @@ $items = $order
 require_once __DIR__ . '/../includes/sidebar.php';
 ?>
 <link rel="stylesheet" href="<?= mp_h(BASE_URL . 'assets/css/member-portal.css') ?>">
-<style>.sos-list{list-style:none;margin:0;padding:0;counter-reset:sos}.sos-list li{counter-increment:sos;display:grid;grid-template-columns:38px 1fr;gap:10px;padding:14px 0;border-bottom:1px solid var(--border,#e2e6eb)}.sos-list li:last-child{border-bottom:0}.sos-list li::before{content:counter(sos);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--primary-fade,#f1ebfa);color:var(--primary,#4a1e8f);font-weight:700}.sos-list h4{margin:4px 0;font-size:16px}.sos-led{color:var(--text-muted,#6b7280);font-size:12.5px}.sos-details{white-space:pre-wrap;margin-top:4px}.sos-hymn{display:inline-block;margin-top:6px}</style>
+<style>.sos-list{list-style:none;margin:0;padding:0;counter-reset:sos}.sos-list li{counter-increment:sos;display:grid;grid-template-columns:38px 1fr;gap:10px;padding:14px 0;border-bottom:1px solid var(--border,#e2e6eb)}.sos-list li:last-child{border-bottom:0}.sos-list li::before{content:counter(sos);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--primary-fade,var(--primary-fade,#f1ebfa));color:var(--primary,#4a1e8f);font-weight:700}.sos-list h4{margin:4px 0;font-size:16px}.sos-led{color:var(--text-muted,#6b7280);font-size:12.5px}.sos-details{white-space:pre-wrap;margin-top:4px}.sos-hymn{display:inline-block;margin-top:6px}</style>
 <div class="main-content">
 <?php require_once __DIR__ . '/../includes/topbar.php'; ?>
 <div class="content-area member-module-page">

@@ -16,7 +16,7 @@ $total_contrib = fetchOne("SELECT COALESCE(SUM(amount),0) as t FROM contribution
   <a href="finance.php" class="btn btn-primary"><i class="fas fa-file-invoice-dollar"></i> Financial Statements Dashboard</a>
 </div>
 <!-- Financial Statements Hero Card -->
-<div class="card mb-4" style="background:linear-gradient(135deg,#4a1e8f,#7b3fcf);color:#fff;border:none">
+<div class="card mb-4" style="background:linear-gradient(135deg,var(--primary),var(--primary-lt));color:#fff;border:none">
   <div class="card-body d-flex align-items-center justify-content-between p-4">
     <div>
       <h4 class="mb-1"><i class="fas fa-file-invoice-dollar mr-2"></i> Financial Statements</h4>
@@ -34,7 +34,7 @@ $total_contrib = fetchOne("SELECT COALESCE(SUM(amount),0) as t FROM contribution
   <div class="col-md-4 mb-4">
     <div class="card report-card h-100">
       <div class="card-body text-center">
-        <div class="report-icon" style="background:#4a1e8f"><i class="fas fa-users"></i></div>
+        <div class="report-icon" style="background:var(--primary)"><i class="fas fa-users"></i></div>
         <h5 class="mt-3">Members Report</h5>
         <p class="text-muted">Full list of all registered church members with departments.</p>
         <div class="badge badge-primary mb-3"><?=$total_members?> Active Members</div>
