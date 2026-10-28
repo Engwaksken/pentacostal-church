@@ -174,7 +174,6 @@ $activeTab = in_array($requestedTab, $allowedTabs, true)
     : 'general';
 ?>
 
-<link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/church-admin.css">
 
 <div class="main-content">

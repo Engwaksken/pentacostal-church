@@ -57,7 +57,6 @@ $daysInMonth = (int)date('t', strtotime($monthStart));
 $today = date('Y-m-d');
 ?>
 
-<link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/church-admin.css">
 <link rel="stylesheet" href="../assets/css/church-programs.css">
 

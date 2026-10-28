@@ -16,7 +16,6 @@ $members=ce_query_all($conn,"SELECT id,full_name member_name FROM members ORDER 
 $stats=['programs'=>count($programs),'services'=>count($services),'live'=>(int)($conn->query("SELECT COUNT(*) c FROM church_services WHERE is_live=1 AND status='Published'")->fetch_assoc()['c']??0),'announcements'=>(int)($conn->query("SELECT COUNT(*) c FROM church_announcements WHERE status='Published'")->fetch_assoc()['c']??0)];
 function ce_admin_form_header(string $action,string $return): void { echo '<input type="hidden" name="csrf_token" value="'.ce_h(ce_csrf()).'"><input type="hidden" name="action" value="'.ce_h($action).'"><input type="hidden" name="return_to" value="'.ce_h($return).'">'; }
 ?>
-<link rel="stylesheet" href="../assets/css/style.css">
 <div class="main-content ce-module">
 <?php include '../includes/topbar.php'; ?>
 <div class="content-area">

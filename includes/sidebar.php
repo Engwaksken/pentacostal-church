@@ -2129,13 +2129,15 @@ $memberId =
 
         navLink(
             $sidebarBaseUrl .
-            'settings/theme.php',
+            'settings/index.php?tab=appearance',
             'fa-palette',
             'Theme Colours',
             $dir,
             $cur,
             'theme.php',
-            'settings.manage'
+            'settings.manage',
+            'tab',
+            'appearance'
         );
 
         ?>

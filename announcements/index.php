@@ -263,7 +263,6 @@ foreach ($rows as $row) {
 }
 ?>
 
-<link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/church-admin.css">
 <link rel="stylesheet" href="../assets/css/announcements.css">
 

@@ -26,7 +26,7 @@ foreach ($departments as $department) {
     }
 }
 ?>
-<link rel="stylesheet" href="../assets/css/style.css"><link rel="stylesheet" href="../assets/css/church-admin.css"><link rel="stylesheet" href="../assets/css/church-manager.css">
+<link rel="stylesheet" href="../assets/css/church-admin.css"><link rel="stylesheet" href="../assets/css/church-manager.css">
 
 <?php
 $rows=ce_query_all($conn,"SELECT * FROM church_services ORDER BY service_date DESC,service_time DESC LIMIT 500");
