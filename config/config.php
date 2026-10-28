@@ -1,12 +1,13 @@
 <?php
 define('APP_VERSION', '1.0.0');
-define('BASE_URL', 'https://pentacostal.kemmytech.com/');
 define('UPLOAD_PATH', __DIR__ . '/../assets/uploads/');
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // db.php also loads branding.php, which defines APP_NAME from the church name in Settings.
 require_once __DIR__ . '/db.php';
+// APP_URL in .env (loaded by db.php) overrides the live site address, e.g. for a local copy.
+define('BASE_URL', rtrim(getenv('APP_URL') ?: 'https://pentacostal.kemmytech.com', '/') . '/');
 define('APP_SHORT', APP_NAME);
 require_once __DIR__ . '/../includes/access.php'; 
 
