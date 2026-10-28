@@ -2015,6 +2015,18 @@ $memberId =
             'events.view'
         );
 
+
+        navLink(
+            $sidebarBaseUrl .
+            'missions/',
+            'fa-globe-africa',
+            'Missions & Outreach',
+            $dir,
+            $cur,
+            'missions',
+            'missions.view'
+        );
+
         ?>
 
 
