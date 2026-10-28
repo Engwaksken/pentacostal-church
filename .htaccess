@@ -15,7 +15,8 @@ RewriteRule ^index\.php$ / [R=301,L]
 # page requests, and never redirect a POST/other non-navigation request.
 RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
 RewriteCond %{THE_REQUEST} \s/+(.+?)\.php(?:[?\s]) [NC]
-RewriteCond %1 !^(?:.*\/)?(?:process(?:[-_].*)?|download(?:[-_].*)?|export(?:[-_].*)?|.*(?:receipt|pdf|certificate|checkin|token|delete|remove|add|edit|collect|registration-links|report-data|cron|verify-otp).*)$ [NC]
+# A word below counts only as a whole part of the path (between /, - or _), so "address" or "credit" pages still get clean URLs.
+RewriteCond %1 !(?:^|[-_/])(?:process|download|export|receipt|pdf|certificates?|checkin|token|delete|remove|add|edit|collect|registration-links|report-data|cron)(?:[-_/]|$) [NC]
 RewriteRule ^(.+?)\.php$ $1 [R=301,L,NE]
 
 # Resolve extensionless page paths to their existing PHP files.
