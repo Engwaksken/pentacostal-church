@@ -1,5 +1,19 @@
 <?php
-// Configure these values in the server environment; never commit live credentials.
+// Configure these values in the server environment or in a .env file at the site root (see .env.example);
+// never commit live credentials. Real environment variables win over .env.
+$envFile = dirname(__DIR__) . '/.env';
+if (is_readable($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $envLine) {
+        $envLine = trim($envLine);
+        if ($envLine === '' || $envLine[0] === '#' || strpos($envLine, '=') === false) continue;
+        [$envKey, $envValue] = array_map('trim', explode('=', $envLine, 2));
+        if (strlen($envValue) > 1 && ($envValue[0] === '"' || $envValue[0] === "'") && substr($envValue, -1) === $envValue[0]) {
+            $envValue = substr($envValue, 1, -1);
+        }
+        if ($envKey !== '' && getenv($envKey) === false) putenv("$envKey=$envValue");
+    }
+}
+unset($envFile, $envLine, $envKey, $envValue);
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');
