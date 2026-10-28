@@ -1913,6 +1913,17 @@ $memberId =
             'expenses.view'
         );
 
+        navLink(
+            $sidebarBaseUrl .
+            'church_assets/',
+            'fa-boxes-stacked',
+            'Church Assets',
+            $dir,
+            $cur,
+            'church_assets',
+            'church_assets.view'
+        );
+
         ?>
 
 

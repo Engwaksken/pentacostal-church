@@ -116,6 +116,8 @@ $directoryTitles = [
 
     'good_samaritan'    => 'Good Samaritan',
 
+    'church_assets'     => 'Church Assets',
+
 
     /* --------------------------------------------------------
      * Projects
