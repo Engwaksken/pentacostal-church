@@ -31,7 +31,6 @@ if (z_table_exists($conn, 'members')) {
 }
 
 include '../includes/header.php';
-echo '<link rel="stylesheet" href="../assets/css/style.css?v=' . time() . '">';
 include '../includes/sidebar.php';
 ?>
 <div class="main-content zones-module">

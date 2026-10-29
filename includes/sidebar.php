@@ -2118,9 +2118,3 @@ $memberId =
      The rewritten topbar.php will use this element when
      opening and closing the sidebar on phones/tablets.
      ========================================================== -->
-
-<div
-    class="sidebar-overlay"
-    id="sidebarOverlay"
-    aria-hidden="true"
-></div>
