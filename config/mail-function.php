@@ -137,14 +137,18 @@ if (!function_exists('systemEmailTemplate')) {
     {
         $safeTitle = mail_h($title);
         $safeSite = mail_h($siteName);
+        $brand = function_exists('site_brand') ? site_brand() : [];
+        $primary = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand['primary'] ?? '')) ? $brand['primary'] : '#4a1e8f';
+        $background = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand['background'] ?? '')) ? $brand['background'] : '#f3f2f8';
+        $text = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand['text'] ?? '')) ? $brand['text'] : '#1e1e2d';
 
         return "
-        <div style='font-family:Arial,sans-serif;background:#f6f7fb;padding:24px;'>
+        <div style='font-family:Arial,sans-serif;background:{$background};padding:24px;'>
             <div style='max-width:680px;margin:auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;'>
-                <div style='background:#4a1e8f;color:#ffffff;padding:18px 24px;'>
+                <div style='background:{$primary};color:#ffffff;padding:18px 24px;'>
                     <h2 style='margin:0;font-size:22px;'>{$safeTitle}</h2>
                 </div>
-                <div style='padding:24px;color:#111827;font-size:15px;line-height:1.6;'>
+                <div style='padding:24px;color:{$text};font-size:15px;line-height:1.6;'>
                     {$bodyHtml}
                     <p style='margin-top:24px;margin-bottom:0;'>Blessings,<br><strong>{$safeSite}</strong></p>
                 </div>
@@ -243,6 +247,15 @@ if (!function_exists('system_mail_branding')) {
     function system_mail_branding(mysqli $conn): array
     {
         $brand = ['name' => (defined('APP_NAME') ? APP_NAME : 'Church'), 'logo' => ''];
+        if (function_exists('site_brand')) {
+            $siteBrand = site_brand();
+            $brand['primary'] = $siteBrand['primary'] ?? '#4a1e8f';
+            $brand['secondary'] = $siteBrand['secondary'] ?? '#d4a017';
+            $brand['background'] = $siteBrand['background'] ?? '#f3f2f8';
+            $brand['text'] = $siteBrand['text'] ?? '#1e1e2d';
+        } else {
+            $brand += ['primary' => '#4a1e8f', 'secondary' => '#d4a017', 'background' => '#f3f2f8', 'text' => '#1e1e2d'];
+        }
         try {
             $stmt = $conn->prepare("SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('site_name','site_logo')");
             if ($stmt) {
@@ -268,7 +281,10 @@ if (!function_exists('brand_system_email')) {
     {
         $brand = system_mail_branding($conn);
         $name = mail_h($brand['name']);
+        foreach (['primary' => '#4a1e8f', 'secondary' => '#d4a017', 'background' => '#f3f2f8', 'text' => '#1e1e2d'] as $key => $fallback) {
+            if (!preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand[$key] ?? ''))) $brand[$key] = $fallback;
+        }
         $logo = $brand['logo'] !== '' ? '<img src="' . mail_h($brand['logo']) . '" alt="' . $name . '" style="display:block;max-width:160px;max-height:64px;margin:0 auto 12px">' : '';
-        return '<div style="font-family:Arial,sans-serif;background:#f4f5f8;padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden"><div style="padding:20px 24px;text-align:center;background:#4a1e8f;color:#fff">' . $logo . '<strong style="font-size:20px">' . $name . '</strong></div><div style="padding:24px;color:#172033;line-height:1.6">' . $html . '</div><div style="padding:14px 24px;background:#f8fafc;color:#64748b;text-align:center;font-size:12px">Sent by ' . $name . '</div></div></div>';
+        return '<div style="font-family:Arial,sans-serif;background:' . $brand['background'] . ';padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid ' . $brand['secondary'] . ';border-radius:14px;overflow:hidden"><div style="padding:20px 24px;text-align:center;background:' . $brand['primary'] . ';color:#fff">' . $logo . '<strong style="font-size:20px">' . $name . '</strong></div><div style="padding:24px;color:' . $brand['text'] . ';line-height:1.6">' . $html . '</div><div style="padding:14px 24px;background:' . $brand['secondary'] . ';color:' . $brand['text'] . ';text-align:center;font-size:12px">Sent by ' . $name . '</div></div></div>';
     }
 }

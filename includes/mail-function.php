@@ -174,6 +174,13 @@ if (!function_exists('mail_brand_system_html')) {
         $db = mail_db_connection();
         $name = defined('APP_NAME') ? APP_NAME : 'Church';
         $logo = '';
+        $brand = function_exists('site_brand') ? site_brand() : [];
+        $colors = [
+            'primary' => preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand['primary'] ?? '')) ? $brand['primary'] : '#4a1e8f',
+            'secondary' => preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand['secondary'] ?? '')) ? $brand['secondary'] : '#d4a017',
+            'background' => preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand['background'] ?? '')) ? $brand['background'] : '#f3f2f8',
+            'text' => preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand['text'] ?? '')) ? $brand['text'] : '#1e1e2d',
+        ];
         if ($db instanceof mysqli) {
             try {
                 $result = $db->query("SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('site_name','site_logo')");
@@ -188,7 +195,7 @@ if (!function_exists('mail_brand_system_html')) {
         }
         $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $logoHtml = $logo !== '' ? '<img src="' . htmlspecialchars($logo, ENT_QUOTES, 'UTF-8') . '" alt="' . $safeName . '" style="display:block;max-width:160px;max-height:64px;margin:0 auto 12px">' : '';
-        return '<div style="font-family:Arial,sans-serif;background:#f4f5f8;padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden"><div style="padding:20px 24px;text-align:center;background:#4a1e8f;color:#fff">' . $logoHtml . '<strong style="font-size:20px">' . $safeName . '</strong></div><div style="padding:24px;color:#172033;line-height:1.6">' . $html . '</div><div style="padding:14px 24px;background:#f8fafc;color:#64748b;text-align:center;font-size:12px">Sent by ' . $safeName . '</div></div></div>';
+        return '<div style="font-family:Arial,sans-serif;background:' . $colors['background'] . ';padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid ' . $colors['secondary'] . ';border-radius:14px;overflow:hidden"><div style="padding:20px 24px;text-align:center;background:' . $colors['primary'] . ';color:#fff">' . $logoHtml . '<strong style="font-size:20px">' . $safeName . '</strong></div><div style="padding:24px;color:' . $colors['text'] . ';line-height:1.6">' . $html . '</div><div style="padding:14px 24px;background:' . $colors['secondary'] . ';color:' . $colors['text'] . ';text-align:center;font-size:12px">Sent by ' . $safeName . '</div></div></div>';
     }
 }
 
