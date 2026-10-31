@@ -22,6 +22,9 @@ $certificateName = trim((string)$certificate['certificate_name']) ?: $brand['nam
 $participant = trim((string)$certificate['full_name']);
 $eventDate = date('d F Y',strtotime((string)$certificate['event_date']));
 $e = static fn($v): string => htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
+// The church's signature line uses the first certificate signatory (title and name) set on the Baptism page.
+require_once __DIR__ . '/../includes/certificate-signatories.php';
+$churchSignatory = cert_signatories_load($conn)[0];
 $isPdf = isset($_GET['pdf']) && $_GET['pdf'] === '1';
 if ($isPdf) require_permission('events.view');
 $pageTitle = 'Event Participation Certificate';
@@ -48,7 +51,7 @@ if (!$isPdf) {
 <div class="event-cert-eyebrow">Certificate of Participation</div><h1>Event Certificate</h1>
 <p class="event-cert-intro">This certificate is proudly presented to</p><div class="event-cert-person"><?=$e($participant)?></div>
 <p class="event-cert-statement">In recognition of participation in <span class="event-cert-event"><?=$e($certificate['event_title'])?></span><?=!empty($certificate['event_type'])?' ('.$e($certificate['event_type']).')':''?>, held on <strong><?=$e($eventDate)?></strong><?=!empty($certificate['venue'])?' at <strong>'.$e($certificate['venue']).'</strong>':''?>.</p>
-<div class="event-cert-signatures"><div class="event-cert-signature"><?=$e($certificate['organizer']?:'Event Organizer')?><br>Organizer</div><div class="event-cert-signature">Authorized Church Representative</div></div>
+<div class="event-cert-signatures"><div class="event-cert-signature"><?=$e($certificate['organizer']?:'Event Organizer')?><br>Organizer</div><div class="event-cert-signature"><?=$churchSignatory['name']!==''?$e($churchSignatory['name']).'<br>':''?><?=$e($churchSignatory['title'])?></div></div>
 <div class="event-cert-number">Certificate No: <?=$e($certificate['certificate_no'])?></div>
 </main><?php endif; ?>
 <?php

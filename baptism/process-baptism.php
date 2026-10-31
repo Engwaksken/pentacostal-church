@@ -336,19 +336,8 @@ function bap_insert_one(mysqli $conn, array $data): int
 
 function bap_ensure_signatories_table(mysqli $conn): void
 {
-    $sql = "CREATE TABLE IF NOT EXISTS baptism_certificate_signatories (
-        id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
-        vicar_name VARCHAR(150) NULL,
-        vicar_signature VARCHAR(255) NULL,
-        secretary_name VARCHAR(150) NULL,
-        secretary_signature VARCHAR(255) NULL,
-        updated_by INT NULL,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-    if (!$conn->query($sql)) {
-        throw new Exception('Could not prepare signatory settings: ' . $conn->error);
-    }
-    $conn->query("INSERT IGNORE INTO baptism_certificate_signatories (id) VALUES (1)");
+    require_once __DIR__ . '/../includes/certificate-signatories.php';
+    cert_signatories_ensure($conn);
 }
 
 function bap_upload_signature(string $field, string $prefix): ?string
@@ -438,6 +427,8 @@ try {
         $res = $conn->query("SELECT * FROM baptism_certificate_signatories WHERE id = 1 LIMIT 1");
         $row = $res ? ($res->fetch_assoc() ?: []) : [];
         if ($res) $res->close();
+        $row['vicar_title'] = trim((string)($row['vicar_title'] ?? '')) ?: CERT_SIGNATORY_DEFAULT_TITLES[0];
+        $row['secretary_title'] = trim((string)($row['secretary_title'] ?? '')) ?: CERT_SIGNATORY_DEFAULT_TITLES[1];
         $row['vicar_signature_url'] = !empty($row['vicar_signature']) ? '../' . ltrim($row['vicar_signature'], '/') : '';
         $row['secretary_signature_url'] = !empty($row['secretary_signature']) ? '../' . ltrim($row['secretary_signature'], '/') : '';
         bap_out(true, '', ['item' => $row]);
@@ -451,6 +442,8 @@ try {
 
         $vicarName = bap_clean($_POST['vicar_name'] ?? '');
         $secretaryName = bap_clean($_POST['secretary_name'] ?? '');
+        $vicarTitle = mb_substr(bap_clean($_POST['vicar_title'] ?? ''), 0, 100) ?: CERT_SIGNATORY_DEFAULT_TITLES[0];
+        $secretaryTitle = mb_substr(bap_clean($_POST['secretary_title'] ?? ''), 0, 100) ?: CERT_SIGNATORY_DEFAULT_TITLES[1];
         $vicarPath = (string)($old['vicar_signature'] ?? '');
         $secretaryPath = (string)($old['secretary_signature'] ?? '');
 
@@ -475,9 +468,9 @@ try {
         }
 
         $updatedBy = (int)($_SESSION['user_id'] ?? 0);
-        $stmt = $conn->prepare("UPDATE baptism_certificate_signatories SET vicar_name=?, vicar_signature=?, secretary_name=?, secretary_signature=?, updated_by=? WHERE id=1");
+        $stmt = $conn->prepare("UPDATE baptism_certificate_signatories SET vicar_title=?, vicar_name=?, vicar_signature=?, secretary_title=?, secretary_name=?, secretary_signature=?, updated_by=? WHERE id=1");
         if (!$stmt) throw new Exception('Could not prepare signatory update: ' . $conn->error);
-        $stmt->bind_param('ssssi', $vicarName, $vicarPath, $secretaryName, $secretaryPath, $updatedBy);
+        $stmt->bind_param('ssssssi', $vicarTitle, $vicarName, $vicarPath, $secretaryTitle, $secretaryName, $secretaryPath, $updatedBy);
         if (!$stmt->execute()) {
             $error = $stmt->error;
             $stmt->close();

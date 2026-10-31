@@ -59,46 +59,14 @@ if ($certificateBrand['logo'] !== '') {
     }
 }
 
-$signatories = [
-    'vicar_name' => '',
-    'vicar_signature' => '',
-    'secretary_name' => '',
-    'secretary_signature' => ''
-];
-
-try {
-    $conn->query("CREATE TABLE IF NOT EXISTS baptism_certificate_signatories (
-        id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
-        vicar_name VARCHAR(150) NULL,
-        vicar_signature VARCHAR(255) NULL,
-        secretary_name VARCHAR(150) NULL,
-        secretary_signature VARCHAR(255) NULL,
-        updated_by INT NULL,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    $conn->query("INSERT IGNORE INTO baptism_certificate_signatories (id) VALUES (1)");
-    $sigRes = $conn->query("SELECT vicar_name, vicar_signature, secretary_name, secretary_signature FROM baptism_certificate_signatories WHERE id=1 LIMIT 1");
-    if ($sigRes && ($sigRow = $sigRes->fetch_assoc())) {
-        $signatories = array_merge($signatories, $sigRow);
-    }
-    if ($sigRes) $sigRes->close();
-} catch (Throwable $e) {
-    error_log('[baptism certificate signatories] ' . $e->getMessage());
+require_once __DIR__ . '/../includes/certificate-signatories.php';
+// The two signatories (title, name, signature) set under Certificate Signatories on the Baptism page.
+$certSignatories = cert_signatories_load($conn);
+foreach ($certSignatories as $sigIndex => $sig) {
+    $certSignatories[$sigIndex]['src'] = cert_signature_src($sig['signature']);
 }
-
-function baptism_signature_src(string $relative): string {
-    $relative = trim($relative);
-    if ($relative === '' || strpos($relative, 'uploads/baptism-signatures/') !== 0) return '';
-    $absolute = __DIR__ . '/../' . $relative;
-    if (!is_file($absolute)) return '';
-    $mime = function_exists('mime_content_type') ? mime_content_type($absolute) : 'image/png';
-    $data = @file_get_contents($absolute);
-    if ($data === false) return '';
-    return 'data:' . $mime . ';base64,' . base64_encode($data);
-}
-
-$vicarSignatureSrc = baptism_signature_src((string)$signatories['vicar_signature']);
-$secretarySignatureSrc = baptism_signature_src((string)$signatories['secretary_signature']);
+// The first signatory's name falls back to the officiant recorded for this baptism.
+if ($certSignatories[0]['name'] === '') $certSignatories[0]['name'] = trim((string)($r['officiant'] ?? ''));
 
 ob_start();
 ?>
@@ -479,25 +447,17 @@ at <strong><?= htmlspecialchars($r['venue']) ?></strong>
 
 <table class="signatures">
 <tr>
+<?php foreach ($certSignatories as $sig): ?>
 <td>
-<?php if($vicarSignatureSrc !== ''): ?>
-<img class="signature-image" src="<?= htmlspecialchars($vicarSignatureSrc, ENT_QUOTES, 'UTF-8') ?>" alt="Vicar signature">
+<?php if ($sig['src'] !== ''): ?>
+<img class="signature-image" src="<?= htmlspecialchars($sig['src'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($sig['title'], ENT_QUOTES, 'UTF-8') ?> signature">
 <?php else: ?>
 <div class="signature-space"></div>
 <?php endif; ?>
-<div class="signatory-name"><?= htmlspecialchars((string)($signatories['vicar_name'] ?: $r['officiant'] ?: ''), ENT_QUOTES, 'UTF-8') ?></div>
-<div class="sig-line">The Vicar / Officiating Clergy</div>
+<div class="signatory-name"><?= htmlspecialchars($sig['name'], ENT_QUOTES, 'UTF-8') ?></div>
+<div class="sig-line"><?= htmlspecialchars($sig['title'], ENT_QUOTES, 'UTF-8') ?></div>
 </td>
-
-<td>
-<?php if($secretarySignatureSrc !== ''): ?>
-<img class="signature-image" src="<?= htmlspecialchars($secretarySignatureSrc, ENT_QUOTES, 'UTF-8') ?>" alt="Secretary signature">
-<?php else: ?>
-<div class="signature-space"></div>
-<?php endif; ?>
-<div class="signatory-name"><?= htmlspecialchars((string)($signatories['secretary_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></div>
-<div class="sig-line">Church Secretary</div>
-</td>
+<?php endforeach; ?>
 </tr>
 </table>
 

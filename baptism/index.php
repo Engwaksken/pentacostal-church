@@ -285,33 +285,52 @@ foreach ($members as $m) {
             </div>
             <div class="bap-modal-body">
                 <div id="signatoriesAlert" class="ajax-alert"></div>
-                <p class="text-muted" style="margin-top:0">Upload transparent PNG or JPG signatures. Saved signatures are automatically inserted on all baptism certificates.</p>
-                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">
-                    <div class="form-group">
-                        <label>Vicar / Officiating Clergy Name</label>
-                        <input type="text" class="form-control" name="vicar_name" id="vicarName" maxlength="150" placeholder="Full name">
-                    </div>
-                    <div class="form-group">
-                        <label>Church Secretary Name</label>
-                        <input type="text" class="form-control" name="secretary_name" id="secretaryName" maxlength="150" placeholder="Full name">
-                    </div>
-                    <div class="form-group">
-                        <label>Vicar Signature</label>
-                        <input type="file" class="form-control" name="vicar_signature" accept="image/png,image/jpeg,image/webp">
-                        <div id="vicarSignaturePreview" style="margin-top:10px"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Secretary Signature</label>
-                        <input type="file" class="form-control" name="secretary_signature" accept="image/png,image/jpeg,image/webp">
-                        <div id="secretarySignaturePreview" style="margin-top:10px"></div>
-                    </div>
+                <p class="text-muted" style="margin-top:0">Set the title, name and signature of the two people who sign certificates, for example <em>Senior Pastor</em> and <em>Church Secretary</em>. They appear on baptism certificates, and the first signatory also signs event certificates for the church. Upload transparent PNG or JPG signatures.</p>
+                <div class="signatory-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px">
+                    <fieldset style="border:1px solid var(--border,#e2e6eb);border-radius:10px;padding:14px 16px;margin:0">
+                        <legend style="padding:0 6px;font-weight:700">First Signatory</legend>
+                        <div class="form-group">
+                            <label for="vicarTitle">Title</label>
+                            <input type="text" class="form-control" name="vicar_title" id="vicarTitle" maxlength="100" placeholder="e.g. Senior Pastor" list="signatoryTitleOptions" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="vicarName">Name</label>
+                            <input type="text" class="form-control" name="vicar_name" id="vicarName" maxlength="150" placeholder="Full name">
+                        </div>
+                        <div class="form-group">
+                            <label>Signature</label>
+                            <input type="file" class="form-control" name="vicar_signature" accept="image/png,image/jpeg,image/webp">
+                            <div id="vicarSignaturePreview" style="margin-top:10px"></div>
+                        </div>
+                        <label style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                            <input type="checkbox" name="remove_vicar_signature" value="1"> Remove current signature
+                        </label>
+                    </fieldset>
+                    <fieldset style="border:1px solid var(--border,#e2e6eb);border-radius:10px;padding:14px 16px;margin:0">
+                        <legend style="padding:0 6px;font-weight:700">Second Signatory</legend>
+                        <div class="form-group">
+                            <label for="secretaryTitle">Title</label>
+                            <input type="text" class="form-control" name="secretary_title" id="secretaryTitle" maxlength="100" placeholder="e.g. Church Secretary" list="signatoryTitleOptions" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="secretaryName">Name</label>
+                            <input type="text" class="form-control" name="secretary_name" id="secretaryName" maxlength="150" placeholder="Full name">
+                        </div>
+                        <div class="form-group">
+                            <label>Signature</label>
+                            <input type="file" class="form-control" name="secretary_signature" accept="image/png,image/jpeg,image/webp">
+                            <div id="secretarySignaturePreview" style="margin-top:10px"></div>
+                        </div>
+                        <label style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                            <input type="checkbox" name="remove_secretary_signature" value="1"> Remove current signature
+                        </label>
+                    </fieldset>
                 </div>
-                <label style="display:flex;gap:8px;align-items:center;margin-top:8px">
-                    <input type="checkbox" name="remove_vicar_signature" value="1"> Remove current Vicar signature
-                </label>
-                <label style="display:flex;gap:8px;align-items:center;margin-top:8px">
-                    <input type="checkbox" name="remove_secretary_signature" value="1"> Remove current Secretary signature
-                </label>
+                <datalist id="signatoryTitleOptions">
+                    <option value="Senior Pastor"><option value="Pastor"><option value="Assistant Pastor"><option value="Bishop">
+                    <option value="Overseer"><option value="Church Secretary"><option value="Church Administrator"><option value="Elder">
+                    <option value="The Vicar / Officiating Clergy"><option value="Officiating Minister">
+                </datalist>
             </div>
             <div class="bap-modal-footer">
                 <button type="button" class="btn btn-outline" data-close-baptism>Cancel</button>
@@ -1093,13 +1112,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await request(ENDPOINT + '?action=get_signatories');
             if (!data.success) throw new Error(data.message || 'Could not load signatories.');
             const item = data.item || {};
+            $('#vicarTitle').value = item.vicar_title || '';
             $('#vicarName').value = item.vicar_name || '';
+            $('#secretaryTitle').value = item.secretary_title || '';
             $('#secretaryName').value = item.secretary_name || '';
             $('#vicarSignaturePreview').innerHTML = item.vicar_signature_url
-                ? `<img src="${esc(item.vicar_signature_url)}" alt="Vicar signature" style="max-width:220px;max-height:80px;object-fit:contain;border:1px solid #ddd;padding:6px;background:#fff">`
+                ? `<img src="${esc(item.vicar_signature_url)}" alt="First signatory signature" style="max-width:220px;max-height:80px;object-fit:contain;border:1px solid #ddd;padding:6px;background:#fff">`
                 : '<span class="text-muted">No signature uploaded.</span>';
             $('#secretarySignaturePreview').innerHTML = item.secretary_signature_url
-                ? `<img src="${esc(item.secretary_signature_url)}" alt="Secretary signature" style="max-width:220px;max-height:80px;object-fit:contain;border:1px solid #ddd;padding:6px;background:#fff">`
+                ? `<img src="${esc(item.secretary_signature_url)}" alt="Second signatory signature" style="max-width:220px;max-height:80px;object-fit:contain;border:1px solid #ddd;padding:6px;background:#fff">`
                 : '<span class="text-muted">No signature uploaded.</span>';
         } catch (error) {
             showAlert($('#signatoriesAlert'), error.message, 'error');
