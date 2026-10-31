@@ -151,6 +151,10 @@ $csrfToken = login_csrf_token();
         </div>
       </div>
 
+      <div style="margin:-6px 0 14px;text-align:right;">
+        <a href="<?= h(BASE_URL . 'forgot-password.php') ?>" style="color:var(--primary);font-size:12.5px;font-weight:600;text-decoration:none;">Forgot password?</a>
+      </div>
+
       <button type="submit" class="btn-login">
         <i class="fa fa-sign-in-alt"></i> Sign In
       </button>

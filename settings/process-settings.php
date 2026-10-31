@@ -36,6 +36,19 @@ try {
         $background=st_color((string)($_POST['background_color']??''),'#f3f2f8');
         $textColor=st_color((string)($_POST['text_color']??''),'#1e1e2d');
         foreach(['primary_color'=>$primary,'secondary_color'=>$secondary,'background_color'=>$background,'text_color'=>$textColor] as $key=>$value) st_save_setting($conn,$key,$value);
+        // Font settings come only from the Appearance tab; the General tab does not send them, so leave them as they are.
+        if(isset($_POST['font_family'])){
+            $family=trim((string)$_POST['font_family']); $custom=trim((string)($_POST['font_family_custom']??''));
+            if($family==='custom'){ if(!site_valid_font_name($custom)) st_json(['success'=>false,'message'=>'Enter a custom font name using letters, numbers, spaces or hyphens (up to 60 characters).']); }
+            elseif(!isset(site_font_options()[$family])) st_json(['success'=>false,'message'=>'Choose a font family from the list.']);
+            $style=(string)($_POST['font_style']??'normal'); if(!in_array($style,['normal','italic'],true)) $style='normal';
+            $sizeChoice=(string)($_POST['font_size']??'14');
+            $size=$sizeChoice==='custom'?(int)($_POST['font_size_custom']??0):(int)$sizeChoice;
+            if($size<10||$size>24) st_json(['success'=>false,'message'=>'Font size must be between 10px and 24px.']);
+            st_save_setting($conn,'font_family',$family); st_save_setting($conn,'font_family_custom',$family==='custom'?$custom:'');
+            st_save_setting($conn,'font_style',$style); st_save_setting($conn,'font_size',(string)$size);
+            st_json(['success'=>true,'message'=>'Theme colours and fonts saved successfully.','reload'=>true]);
+        }
         st_json(['success'=>true,'message'=>'Branding and theme colors saved successfully.']);
     }
 

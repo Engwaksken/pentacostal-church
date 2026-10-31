@@ -115,6 +115,11 @@ $settings = [
     'background_color' => st_value($conn, 'background_color', '#f3f2f8'),
     'text_color'       => st_value($conn, 'text_color', '#1e1e2d'),
 ];
+$font = site_font();
+$fontOptions = site_font_options();
+$fontSizes = site_font_sizes();
+$fontSizeIsCustom = !isset($fontSizes[$font['size']]);
+$fontStacks = array_map(fn($o) => $o['stack'], $fontOptions);
 
 $email = [
     'smtp_host'   => '',
@@ -583,6 +588,77 @@ $activeTab = in_array($requestedTab, $allowedTabs, true)
                             </div>
                         </div>
 
+                        <div class="settings-card-header" style="margin-top:24px">
+                            <div>
+                                <h3>
+                                    <i class="fas fa-font"></i>
+                                    Fonts
+                                </h3>
+                                <p class="settings-card-subtitle">
+                                    Choose the font family, style and size used for text across the admin and member portals.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="settings-form-grid">
+                            <div class="settings-form-group">
+                                <label for="fontFamily">Font Family</label>
+                                <select id="fontFamily" name="font_family" class="form-control">
+                                    <?php foreach ($fontOptions as $key => $option): ?>
+                                        <option value="<?= st_h($key) ?>" <?= $font['family'] === $key ? 'selected' : '' ?>><?= st_h($option['label']) ?></option>
+                                    <?php endforeach; ?>
+                                    <option value="custom" <?= $font['family'] === 'custom' ? 'selected' : '' ?>>Custom font...</option>
+                                </select>
+                            </div>
+
+                            <div class="settings-form-group" id="fontCustomGroup" <?= $font['family'] === 'custom' ? '' : 'hidden' ?>>
+                                <label for="fontFamilyCustom">Custom Font Name</label>
+                                <input
+                                    type="text"
+                                    id="fontFamilyCustom"
+                                    name="font_family_custom"
+                                    class="form-control"
+                                    maxlength="60"
+                                    placeholder="e.g. Raleway"
+                                    value="<?= st_h($font['custom']) ?>"
+                                >
+                                <small class="settings-font-help">Any font on <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a>, typed exactly as listed there, or a font installed on the users' devices.</small>
+                            </div>
+
+                            <div class="settings-form-group">
+                                <label for="fontStyle">Font Style</label>
+                                <select id="fontStyle" name="font_style" class="form-control">
+                                    <option value="normal" <?= $font['style'] === 'normal' ? 'selected' : '' ?>>Normal</option>
+                                    <option value="italic" <?= $font['style'] === 'italic' ? 'selected' : '' ?>>Italic</option>
+                                </select>
+                            </div>
+
+                            <div class="settings-form-group">
+                                <label for="fontSize">Font Size</label>
+                                <select id="fontSize" name="font_size" class="form-control">
+                                    <?php foreach ($fontSizes as $px => $label): ?>
+                                        <option value="<?= (int)$px ?>" <?= !$fontSizeIsCustom && $font['size'] === $px ? 'selected' : '' ?>><?= st_h($label) ?></option>
+                                    <?php endforeach; ?>
+                                    <option value="custom" <?= $fontSizeIsCustom ? 'selected' : '' ?>>Custom size...</option>
+                                </select>
+                            </div>
+
+                            <div class="settings-form-group" id="fontSizeCustomGroup" <?= $fontSizeIsCustom ? '' : 'hidden' ?>>
+                                <label for="fontSizeCustom">Custom Font Size (px)</label>
+                                <input
+                                    type="number"
+                                    id="fontSizeCustom"
+                                    name="font_size_custom"
+                                    class="form-control"
+                                    min="10"
+                                    max="24"
+                                    step="1"
+                                    value="<?= (int)$font['size'] ?>"
+                                >
+                                <small class="settings-font-help">Between 10 and 24 pixels.</small>
+                            </div>
+                        </div>
+
                         <div
                             class="settings-theme-preview"
                             id="themePreview"
@@ -595,7 +671,7 @@ $activeTab = in_array($requestedTab, $allowedTabs, true)
                                 <h4>Theme Preview</h4>
                                 <p>
                                     This preview shows how your selected primary,
-                                    secondary, background and text colours work together.
+                                    secondary, background and text colours and your chosen font look together.
                                 </p>
 
                                 <span class="settings-theme-preview-button">
@@ -620,7 +696,7 @@ $activeTab = in_array($requestedTab, $allowedTabs, true)
                                 id="saveAppearanceBtn"
                             >
                                 <i class="fas fa-save"></i>
-                                Save Theme Colours
+                                Save Colours &amp; Fonts
                             </button>
                         </div>
                     </form>
@@ -1282,6 +1358,34 @@ document.addEventListener('DOMContentLoaded', function () {
         text: <?= json_encode($settings['text_color']) ?>
     };
 
+    const fontFamily = document.getElementById('fontFamily');
+    const fontFamilyCustom = document.getElementById('fontFamilyCustom');
+    const fontStyle = document.getElementById('fontStyle');
+    const fontSize = document.getElementById('fontSize');
+    const fontSizeCustom = document.getElementById('fontSizeCustom');
+    const fontCustomGroup = document.getElementById('fontCustomGroup');
+    const fontSizeCustomGroup = document.getElementById('fontSizeCustomGroup');
+    const fontStacks = <?= json_encode($fontStacks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const googleFonts = <?= json_encode(array_keys(array_filter($fontOptions, fn($o) => $o['google']))) ?>;
+    const fontDefaults = {
+        family: <?= json_encode($font['family']) ?>,
+        custom: <?= json_encode($font['custom']) ?>,
+        style: <?= json_encode($font['style']) ?>,
+        size: <?= json_encode($fontSizeIsCustom ? 'custom' : (string)$font['size']) ?>,
+        sizeCustom: <?= json_encode((string)$font['size']) ?>
+    };
+    const loadedPreviewFonts = new Set();
+
+    function loadPreviewFont(name, withFaces) {
+        if (loadedPreviewFonts.has(name)) return;
+        loadedPreviewFonts.add(name);
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(name).replace(/%20/g, '+')
+            + (withFaces ? ':ital,wght@0,400;0,700;1,400;1,700' : '') + '&display=swap';
+        document.head.appendChild(link);
+    }
+
     function updateThemePreview() {
         const primary = primaryColor?.value || themeDefaults.primary;
         const secondary = secondaryColor?.value || themeDefaults.secondary;
@@ -1299,6 +1403,28 @@ document.addEventListener('DOMContentLoaded', function () {
         preview?.style.setProperty('--preview-bg', background);
         preview?.style.setProperty('--preview-text', text);
 
+        if (preview) {
+            const family = fontFamily?.value || 'system';
+            const custom = (fontFamilyCustom?.value || '').trim();
+            const size = fontSize?.value === 'custom'
+                ? parseInt(fontSizeCustom?.value || '14', 10)
+                : parseInt(fontSize?.value || '14', 10);
+
+            if (fontCustomGroup) fontCustomGroup.hidden = family !== 'custom';
+            if (fontSizeCustomGroup) fontSizeCustomGroup.hidden = fontSize?.value !== 'custom';
+
+            if (family === 'custom' && /^[A-Za-z0-9][A-Za-z0-9 \-]{0,59}$/.test(custom)) {
+                loadPreviewFont(custom, false);
+                preview.style.fontFamily = "'" + custom + "', 'Segoe UI', system-ui, sans-serif";
+            } else if (fontStacks[family]) {
+                if (googleFonts.includes(family)) loadPreviewFont(family, true);
+                preview.style.fontFamily = fontStacks[family];
+            }
+
+            preview.style.fontStyle = fontStyle?.value === 'italic' ? 'italic' : 'normal';
+            preview.style.fontSize = (size >= 10 && size <= 24 ? size : 14) + 'px';
+        }
+
         primarySwatch?.style.setProperty('--swatch', primary);
         secondarySwatch?.style.setProperty('--swatch', secondary);
         backgroundSwatch?.style.setProperty('--swatch', background);
@@ -1309,9 +1435,15 @@ document.addEventListener('DOMContentLoaded', function () {
         primaryColor,
         secondaryColor,
         backgroundColor,
-        textColor
+        textColor,
+        fontFamily,
+        fontFamilyCustom,
+        fontStyle,
+        fontSize,
+        fontSizeCustom
     ].forEach(function (input) {
         input?.addEventListener('input', updateThemePreview);
+        input?.addEventListener('change', updateThemePreview);
     });
 
     document
@@ -1332,6 +1464,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (textColor) {
                 textColor.value = themeDefaults.text;
             }
+
+            if (fontFamily) fontFamily.value = fontDefaults.family;
+            if (fontFamilyCustom) fontFamilyCustom.value = fontDefaults.custom;
+            if (fontStyle) fontStyle.value = fontDefaults.style;
+            if (fontSize) fontSize.value = fontDefaults.size;
+            if (fontSizeCustom) fontSizeCustom.value = fontDefaults.sizeCustom;
 
             updateThemePreview();
         });
