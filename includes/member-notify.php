@@ -20,8 +20,8 @@ function mn_categories(): array
         'tips'          => ['label' => 'Health and education tips', 'description' => 'New tips from the departments', 'push' => 1, 'email' => 1, 'sms' => 0],
         'pledges'       => ['label' => 'Pledges', 'description' => 'When a pledge is recorded for you or fully paid', 'push' => 1, 'email' => 1, 'sms' => 0],
         'payments'      => ['label' => 'Payments received', 'description' => 'Pledge payments, tithe, thanksgiving and contributions', 'push' => 1, 'email' => 1, 'sms' => 0],
-        // The website already texted weekly pledge reminders, so SMS stays on by default here.
-        'reminders'     => ['label' => 'Reminders', 'description' => 'Weekly pledge balance, and programs and events the day before', 'push' => 1, 'email' => 1, 'sms' => 1],
+        // The website already texted pledge reminders, so SMS stays on by default here.
+        'reminders'     => ['label' => 'Reminders', 'description' => 'Pledge balance on Saturday morning (and a push on Sunday before service), and programs and events the day before', 'push' => 1, 'email' => 1, 'sms' => 1],
     ];
 }
 

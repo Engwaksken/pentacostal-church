@@ -137,6 +137,48 @@ foreach ($givingTypes as $table => [$label, $dateCol]) {
     }
 }
 
+/* ------------------------------------------------------------------ weekend pledge reminders */
+
+// Saturday from 8 am: a reminder by the member's chosen channels. Sunday from 7 am: a short push before service.
+// One message per member for all their unpaid pledges. Skipped if the job was not running that morning.
+$weekday = (int)date('N');
+$hour = (int)date('G');
+$weekend = match (true) {
+    $weekday === 6 && $hour >= 8 && $hour < 12 => 'saturday',
+    $weekday === 7 && $hour >= 7 && $hour < 10 => 'sunday',
+    default => null,
+};
+if (!$init && $weekend && mn_has_table($conn, 'pledges') && mn_state($conn, 'pledge_reminders:' . date('Y-m-d')) === null) {
+    require_once __DIR__ . '/../includes/pledge-types.php';
+    [$typeSelect, $typeJoin] = pledge_purpose_sql($conn);
+    $projectJoin = mn_has_table($conn, 'projects') ? 'LEFT JOIN projects pr ON pr.id=p.project_id' : '';
+    $projectName = $projectJoin ? 'pr.name' : 'NULL';
+    $rows = mn_rows($conn, "SELECT p.member_id, p.pledge_no, p.pledge_reason, p.amount_pledged, p.amount_paid, $projectName AS project_name $typeSelect
+        FROM pledges p $projectJoin $typeJoin
+        WHERE p.member_id IS NOT NULL AND p.status IN ('Pending','Partial') AND p.amount_pledged - p.amount_paid > 0
+        ORDER BY p.member_id, p.pledge_date, p.id");
+    $byMember = [];
+    foreach ($rows as $r) $byMember[(int)$r['member_id']][] = $r;
+
+    foreach ($byMember as $memberId => $pledges) {
+        $balance = array_sum(array_map(fn($p) => (float)$p['amount_pledged'] - (float)$p['amount_paid'], $pledges));
+        $refKey = "pledge_reminder:$weekend:$memberId:" . date('Y-m-d');
+        if ($weekend === 'sunday') {
+            mn_enqueue($conn, $memberId, 'reminders', $refKey, 'Bring your pledge today',
+                "Your pledge balance is {$ugx($balance)}. You can make a payment at church today. Thank you.", ['push']);
+        } else {
+            $p = $pledges[0];
+            $body = count($pledges) === 1
+                ? "Your pledge {$p['pledge_no']} (" . pledge_purpose($p) . ") has a balance of {$ugx($balance)}."
+                : 'You have ' . count($pledges) . " unpaid pledges with a total balance of {$ugx($balance)}: "
+                    . implode('; ', array_map(fn($p) => pledge_purpose($p) . ' ' . $ugx((float)$p['amount_pledged'] - (float)$p['amount_paid']), $pledges)) . '.';
+            mn_enqueue($conn, $memberId, 'reminders', $refKey, 'Pledge reminder', "$body Thank you for your faithful giving.");
+        }
+        $queued++;
+    }
+    mn_set_state($conn, 'pledge_reminders:' . date('Y-m-d'), (string)count($byMember));
+}
+
 if ($init) {
     mn_set_state($conn, 'initialized', date('Y-m-d H:i:s'));
     echo "First run: recorded existing items; new items will be sent from now on.\n";
