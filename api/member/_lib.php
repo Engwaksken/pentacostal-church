@@ -10,6 +10,10 @@ const MAPI_TOKEN_DAYS = 90;
 const MAPI_LOCK_MINUTES = 15;
 const MAPI_MAX_FAILS_PER_IDENTIFIER = 5;
 const MAPI_MAX_FAILS_PER_IP = 20;
+const MAPI_RESET_CODE_MINUTES = 15;
+const MAPI_RESET_MAX_TRIES = 5;
+const MAPI_RESET_MAX_REQUESTS = 3;       // per number per hour
+const MAPI_RESET_MAX_REQUESTS_PER_IP = 10; // per hour
 
 function mapi_json(int $status, array $payload): never
 {
@@ -243,6 +247,13 @@ function mapi_password_errors(string $current, string $new, string $confirm, str
 {
     $errors = [];
     if ($currentHash === '' || !password_verify($current, $currentHash)) $errors[] = 'Your current password is incorrect.';
+    return array_merge($errors, mapi_new_password_errors($new, $confirm, $currentHash));
+}
+
+/** Rules for a new password, without checking the current one (also used by reset_password). */
+function mapi_new_password_errors(string $new, string $confirm, string $currentHash): array
+{
+    $errors = [];
     if (strlen($new) < 8) $errors[] = 'The new password must contain at least 8 characters.';
     if (!preg_match('/[A-Z]/', $new)) $errors[] = 'The new password must contain an uppercase letter.';
     if (!preg_match('/[a-z]/', $new)) $errors[] = 'The new password must contain a lowercase letter.';
@@ -250,4 +261,54 @@ function mapi_password_errors(string $current, string $new, string $confirm, str
     if ($new !== $confirm) $errors[] = 'The new password confirmation does not match.';
     if ($currentHash !== '' && password_verify($new, $currentHash)) $errors[] = 'The new password must be different from your current password.';
     return $errors;
+}
+
+/* ------------------------------------------------------------------ password reset */
+
+/** Phone and email to send a reset code to; members' own details first, then the login's email. */
+function mapi_reset_contacts(mysqli $conn, int $memberId, int $userId): array
+{
+    $cols = [];
+    foreach (['full_name', 'phone', 'email'] as $col) $cols[] = mapi_column($conn, 'members', $col) ? "`$col`" : "NULL AS `$col`";
+    $member = mapi_row($conn, 'SELECT ' . implode(', ', $cols) . ' FROM members WHERE id=? LIMIT 1', 'i', [$memberId]) ?? [];
+    $email = trim((string)($member['email'] ?? ''));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) && mapi_column($conn, 'users', 'email')) {
+        $user = mapi_row($conn, 'SELECT email FROM users WHERE id=? LIMIT 1', 'i', [$userId]);
+        $email = trim((string)($user['email'] ?? ''));
+    }
+    return [
+        'name' => trim((string)($member['full_name'] ?? '')) ?: 'Member',
+        'phone' => trim((string)($member['phone'] ?? '')),
+        'email' => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '',
+    ];
+}
+
+/** Sends the reset code by SMS and email; true when at least one was sent. */
+function mapi_send_reset_code(mysqli $conn, array $contacts, string $code): bool
+{
+    foreach (['/../../config/mail-function.php', '/../../config/sms-function.php'] as $helper) {
+        if (is_file(__DIR__ . $helper)) require_once __DIR__ . $helper;
+    }
+    $site = mapi_setting($conn, 'site_name', 'Rongoro COU');
+    $minutes = MAPI_RESET_CODE_MINUTES;
+    $sent = false;
+
+    if ($contacts['phone'] !== '' && function_exists('sendSms')) {
+        $sent = sendSms($conn, $contacts['phone'], "Your member app password reset code is $code. It expires in $minutes minutes. Do not share it with anyone.") || $sent;
+    }
+    if ($contacts['email'] !== '' && function_exists('sendSystemEmail')) {
+        $name = htmlspecialchars($contacts['name'], ENT_QUOTES, 'UTF-8');
+        $html = "<p>Hello $name,</p><p>A password reset was requested for your " . htmlspecialchars($site, ENT_QUOTES, 'UTF-8') . " member account.</p>"
+            . "<p>Your reset code is:</p><p style=\"font-size:28px;font-weight:700;letter-spacing:6px;\">$code</p>"
+            . "<p>The code expires in $minutes minutes. Do not share it with anyone.</p>"
+            . "<p>If you did not ask to reset your password, you can ignore this email; your password has not changed.</p>";
+        $text = "Hello {$contacts['name']},
+
+Your $site password reset code is $code. It expires in $minutes minutes. Do not share it with anyone.
+
+"
+            . "If you did not ask to reset your password, you can ignore this email.";
+        $sent = sendSystemEmail($conn, $contacts['email'], $contacts['name'], "$site password reset code", $html, $text) || $sent;
+    }
+    return $sent;
 }

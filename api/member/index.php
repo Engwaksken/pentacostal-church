@@ -28,6 +28,8 @@ try {
         case 'logout':          mapi_action_logout($conn); break;
         case 'me':              mapi_action_me($conn); break;
         case 'change_password': mapi_action_change_password($conn); break;
+        case 'forgot_password': mapi_action_forgot_password($conn); break;
+        case 'reset_password':  mapi_action_reset_password($conn); break;
         case 'update_profile':  mapi_action_update_profile($conn); break;
         case 'update_photo':    mapi_action_update_photo($conn); break;
         case 'dashboard':       mapi_action_dashboard($conn); break;
@@ -165,6 +167,116 @@ function mapi_action_change_password(mysqli $conn): never
     $stmt->execute();
     $stmt->close();
     mapi_ok(['message' => 'Your password was changed. Use it for the app and the website.']);
+}
+
+/**
+ * Sends a 6-digit reset code to the phone and email on file for a membership or pledge number.
+ * The reply is the same whether or not the number matched, so it cannot be used to find valid numbers.
+ */
+function mapi_action_forgot_password(mysqli $conn): never
+{
+    mapi_require_method('POST');
+    if (!mapi_table($conn, 'member_api_password_resets')) mapi_fail(503, 'Password reset is not set up yet. Please contact the church office.');
+    $identifier = mapi_str(mapi_input(), 'identifier', 80);
+    if ($identifier === '') mapi_fail(422, 'Enter your membership or pledge number.');
+
+    $key = mb_strtolower($identifier);
+    $ip = mapi_client_ip();
+    $since = date('Y-m-d H:i:s', time() - 3600);
+    $byIdentifier = mapi_row($conn, 'SELECT COUNT(*) c FROM member_api_password_resets WHERE identifier=? AND created_at>=?', 'ss', [$key, $since]);
+    $byIp = mapi_row($conn, 'SELECT COUNT(*) c FROM member_api_password_resets WHERE ip_address=? AND created_at>=?', 'ss', [$ip, $since]);
+    if ((int)$byIdentifier['c'] >= MAPI_RESET_MAX_REQUESTS || (int)$byIp['c'] >= MAPI_RESET_MAX_REQUESTS_PER_IP) {
+        mapi_fail(429, 'Too many reset requests. Please wait an hour and try again, or contact the church office.');
+    }
+
+    $account = mapi_find_member_account($conn, $identifier);
+    $userId = $account ? (int)$account['user_id'] : null;
+    $code = (string)random_int(100000, 999999);
+    $codeHash = $account ? password_hash($code, PASSWORD_DEFAULT) : null;
+    $now = date('Y-m-d H:i:s');
+    $expires = date('Y-m-d H:i:s', time() + MAPI_RESET_CODE_MINUTES * 60);
+    if ($account) {
+        // Only the newest code works.
+        $stmt = $conn->prepare('UPDATE member_api_password_resets SET used_at=NOW() WHERE user_id=? AND used_at IS NULL');
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $stmt->close();
+    }
+    $stmt = $conn->prepare('INSERT INTO member_api_password_resets (identifier, ip_address, user_id, code_hash, created_at, expires_at) VALUES (?,?,?,?,?,?)');
+    $stmt->bind_param('ssisss', $key, $ip, $userId, $codeHash, $now, $expires);
+    $stmt->execute();
+    $stmt->close();
+    // Keep the table small: requests older than a day no longer matter.
+    $conn->query('DELETE FROM member_api_password_resets WHERE created_at < NOW() - INTERVAL 1 DAY');
+
+    if ($account) {
+        $contacts = mapi_reset_contacts($conn, (int)$account['member_id'], $userId);
+        if (!mapi_send_reset_code($conn, $contacts, $code)) {
+            error_log('[Member API] forgot_password: no reset code could be sent for user ' . $userId);
+        }
+    }
+    mapi_ok([
+        'message' => 'If this number belongs to an active member with a phone number or email on file, a 6-digit code has been sent. '
+            . 'It expires in ' . MAPI_RESET_CODE_MINUTES . ' minutes. If nothing arrives, contact the church office.',
+        'expires_in_minutes' => MAPI_RESET_CODE_MINUTES,
+    ]);
+}
+
+/** Sets a new password with a code from forgot_password, and signs the member out of the app everywhere. */
+function mapi_action_reset_password(mysqli $conn): never
+{
+    mapi_require_method('POST');
+    if (!mapi_table($conn, 'member_api_password_resets')) mapi_fail(503, 'Password reset is not set up yet. Please contact the church office.');
+    $input = mapi_input();
+    $identifier = mapi_str($input, 'identifier', 80);
+    $code = mapi_str($input, 'code', 10);
+    $new = (string)($input['new_password'] ?? '');
+    $confirm = (string)($input['confirm_password'] ?? '');
+    if ($identifier === '' || $code === '') mapi_fail(422, 'Enter your membership or pledge number and the code you received.');
+
+    $key = mb_strtolower($identifier);
+    if (mapi_is_locked($conn, $key)) mapi_fail(429, 'Too many failed attempts. Please wait ' . MAPI_LOCK_MINUTES . ' minutes and try again.');
+
+    $account = mapi_find_member_account($conn, $identifier);
+    $reset = $account ? mapi_row(
+        $conn,
+        'SELECT id, code_hash FROM member_api_password_resets
+         WHERE user_id=? AND used_at IS NULL AND expires_at>NOW() AND attempts<? AND code_hash IS NOT NULL
+         ORDER BY id DESC LIMIT 1',
+        'ii',
+        [(int)$account['user_id'], MAPI_RESET_MAX_TRIES]
+    ) : null;
+    if (!$reset || !preg_match('/^\d{6}$/', $code) || !password_verify($code, (string)$reset['code_hash'])) {
+        if ($reset) {
+            $stmt = $conn->prepare('UPDATE member_api_password_resets SET attempts=attempts+1 WHERE id=?');
+            $stmt->bind_param('i', $reset['id']);
+            $stmt->execute();
+            $stmt->close();
+        }
+        mapi_record_failure($conn, $key);
+        mapi_fail(422, 'The code is incorrect or has expired. Check the code or request a new one.');
+    }
+
+    $userId = (int)$account['user_id'];
+    $errors = mapi_new_password_errors($new, $confirm, (string)$account['password']);
+    if ($errors) mapi_fail(422, implode(' ', $errors));
+
+    $hash = password_hash($new, PASSWORD_DEFAULT);
+    $stmt = $conn->prepare('UPDATE users SET password=? WHERE id=?');
+    $stmt->bind_param('si', $hash, $userId);
+    $stmt->execute();
+    $stmt->close();
+    $stmt = $conn->prepare('UPDATE member_api_password_resets SET used_at=NOW() WHERE user_id=? AND used_at IS NULL');
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->close();
+    // Anyone who knew the old password is signed out of the app.
+    $stmt = $conn->prepare('UPDATE member_api_tokens SET revoked_at=NOW() WHERE user_id=? AND revoked_at IS NULL');
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->close();
+    mapi_clear_failures($conn, $key);
+    mapi_ok(['message' => 'Your password was reset. Use it for the app and the website.']);
 }
 
 /** Contact details and service attendance, with the same rules as the web portal (member/profile.php). */
