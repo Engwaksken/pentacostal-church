@@ -268,11 +268,7 @@ function sunday_school_sync_summary(array $sync): string
     if ($sync['enrolled'] > 0) $notes[] = $sync['enrolled'] . ' child member' . ($sync['enrolled'] === 1 ? '' : 's') . ' enrolled';
     if ($sync['moved'] > 0) $notes[] = $sync['moved'] . ' pupil' . ($sync['moved'] === 1 ? '' : 's') . ' moved to the class for their age';
     if ($sync['graduated'] > 0) $notes[] = $sync['graduated'] . ' graduated';
-    $text = $notes ? ' ' . ucfirst(implode(', ', $notes)) . '.' : '';
-    if ($sync['gaps']) {
-        $text .= ' Note: no class covers age' . (count($sync['gaps']) === 1 ? ' ' : 's ') . implode(', ', $sync['gaps']) . '.';
-    }
-    return $text;
+    return $notes ? ' ' . ucfirst(implode(', ', $notes)) . '.' : '';
 }
 
 /** The standard Sunday school classes: pre-school, primary school and teenagers, covering ages 3-17 with no gap. */
