@@ -79,8 +79,10 @@ function many(string $sql): array {
     if ($res) { while ($r = $res->fetch_assoc()) $rows[] = $r; $res->close(); }
     return $rows;
 }
-function next_no(string $prefix): string {
-    return $prefix . '-' . date('Ymd-His') . '-' . random_int(100, 999);
+/** A receipt/reference number. Pass $seq when creating many in one request (imports) so they cannot collide. */
+function next_no(string $prefix, ?int $seq = null): string {
+    // Same shape and length as before (e.g. RCP-20261031-213503-0042), so it fits the receipt_no column.
+    return $prefix . '-' . date('Ymd-His') . '-' . ($seq !== null ? sprintf('%04d', $seq) : random_int(100, 999));
 }
 /** Sets amount_paid from the pledge's payments and updates the status; a cancelled pledge stays cancelled. */
 function recalc_pledge(int $pledgeId): void {
@@ -105,31 +107,6 @@ function member_pledge_no(int $memberId): string {
     $stmt->close();
     return trim((string)($row['pledge_no'] ?? ''));
 }
-/**
- * Accepts YYYY-MM-DD, DD/MM/YYYY (also with - or .), Excel styles such as 4-Jan-2026 / 04-Jan-26,
- * and Excel date serial numbers. Returns YYYY-MM-DD, or '' when the date is not valid.
- */
-function normalize_date(string $date): string {
-    $date = trim($date);
-    if ($date === '') return '';
-    if (preg_match('/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/', $date, $m)) {
-        return checkdate((int)$m[2], (int)$m[1], (int)$m[3]) ? sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]) : '';
-    }
-    if (preg_match('/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T].*)?$/', $date, $m)) {
-        return checkdate((int)$m[2], (int)$m[3], (int)$m[1]) ? sprintf('%04d-%02d-%02d', $m[1], $m[2], $m[3]) : '';
-    }
-    if (preg_match('/^\d{5}(?:\.\d+)?$/', $date)) { // Excel serial, e.g. 46026
-        return (new DateTimeImmutable('1899-12-30'))->modify('+'.(int)$date.' days')->format('Y-m-d');
-    }
-    $formats = preg_match('/\d{4}$/', $date) ? ['j-M-Y', 'j M Y', 'j F Y', 'M j, Y', 'F j, Y'] : ['j-M-y', 'j M y'];
-    foreach ($formats as $format) {
-        $d = DateTimeImmutable::createFromFormat('!'.$format, $date);
-        $errors = DateTimeImmutable::getLastErrors();
-        if ($d && (!$errors || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) return $d->format('Y-m-d');
-    }
-    return '';
-}
-const PLEDGE_STATUSES = ['Pending', 'Partial', 'Fulfilled', 'Cancelled'];
 function member_name(array $r): string {
     $name = trim((string)($r['full_name'] ?? ''));
     return $name !== '' ? $name : 'Member';
@@ -195,9 +172,297 @@ function send_pledge_reminder(array $pledge): array {
     return ['email_sent' => $emailSent, 'sms_sent' => $smsSent];
 }
 
+/** Read the first worksheet of an Excel .xlsx workbook without third-party packages. */
+function read_pledges_xlsx(string $path): array {
+    if (!class_exists('ZipArchive') || !class_exists('DOMDocument')) throw new RuntimeException('Server XLSX support is not available.');
+    $zip = new ZipArchive();
+    if ($zip->open($path) !== true) throw new RuntimeException('The uploaded workbook could not be opened.');
+    try {
+        $workbook = simplexml_load_string((string)$zip->getFromName('xl/workbook.xml'));
+        $rels = simplexml_load_string((string)$zip->getFromName('xl/_rels/workbook.xml.rels'));
+        if (!$workbook || !$rels || !isset($workbook->sheets->sheet[0])) throw new RuntimeException('The workbook has no readable first worksheet.');
+        $rid = (string)$workbook->sheets->sheet[0]->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships')->id;
+        $target = '';
+        foreach ($rels->Relationship as $rel) if ((string)$rel['Id'] === $rid) $target = (string)$rel['Target'];
+        if ($target === '') throw new RuntimeException('The first worksheet could not be located.');
+        $sheetPath = ltrim($target, '/');
+        if (strpos($sheetPath, 'xl/') !== 0) $sheetPath = 'xl/'.$sheetPath;
+        $sheet = new DOMDocument();
+        if (!$sheet->loadXML((string)$zip->getFromName($sheetPath))) throw new RuntimeException('The first worksheet is invalid.');
+        $strings = [];
+        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($sharedXml !== false) {
+            $shared = new DOMDocument(); $shared->loadXML($sharedXml);
+            $sx = new DOMXPath($shared); $sx->registerNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            foreach ($sx->query('//m:si') as $si) $strings[] = $si->textContent;
+        }
+        $xp = new DOMXPath($sheet); $xp->registerNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $rows = [];
+        foreach ($xp->query('//m:sheetData/m:row') as $rowNode) {
+            $row = []; foreach ($xp->query('m:c', $rowNode) as $cell) {
+                $ref = $cell->getAttribute('r'); if (!preg_match('/^([A-Z]+)/', $ref, $m)) continue;
+                $col = 0; foreach (str_split($m[1]) as $letter) $col = $col * 26 + ord($letter) - 64;
+                $v = $xp->query('m:v', $cell)->item(0); $value = $v ? $v->textContent : '';
+                if ($cell->getAttribute('t') === 's' && $value !== '') $value = $strings[(int)$value] ?? '';
+                elseif ($cell->getAttribute('t') === 'inlineStr') $value = $xp->query('m:is', $cell)->item(0)?->textContent ?? '';
+                $row[$col] = trim((string)$value);
+            }
+            $rows[(int)$rowNode->getAttribute('r')] = $row;
+        }
+        if (strtoupper(trim((string)($rows[2][2] ?? ''))) !== 'NAME' || strtoupper(trim((string)($rows[2][6] ?? ''))) !== 'PLEDGE') {
+            throw new RuntimeException('The first sheet does not look like a pledges worksheet.');
+        }
+        if (!preg_match('/\b(20\d{2})\b/', (string)($rows[1][2] ?? ''), $yearMatch)) throw new RuntimeException('Add the pledge year (for example, 2025) to the worksheet title in cell B1.');
+        $year = (int)$yearMatch[1];
+        $pledgeNoCol = 0;
+        foreach (($rows[2] ?? []) as $col => $heading) {
+            $heading = strtolower(trim((string)$heading));
+            if (preg_match('/pledge\s*(?:no\.?|number|#)/', $heading)) { $pledgeNoCol = (int)$col; break; }
+        }
+        $result = [];
+        foreach ($rows as $number => $row) {
+            if ($number <= 2) continue;
+            $name = trim((string)($row[2] ?? '')); $pledged = (float)str_replace([',', ' '], '', (string)($row[6] ?? ''));
+            $pledgeNo = $pledgeNoCol ? trim((string)($row[$pledgeNoCol] ?? '')) : '';
+            if ($name === '' || $pledged <= 0) continue;
+            $payments = [];
+            for ($col = 8; $col <= 61; $col++) {
+                $amount = (float)str_replace([',', ' '], '', (string)($row[$col] ?? ''));
+                if ($amount <= 0) continue;
+                $heading = (string)($rows[2][$col] ?? '');
+                if (is_numeric($heading) && (float)$heading >= 1) {
+                    $date = (new DateTimeImmutable('1899-12-30'))->modify('+'.(int)$heading.' days')->format('Y-m-d');
+                } else {
+                    $date = normalize_date($heading); // date typed as text, e.g. 05/01/2025
+                    if ($date === '') continue;
+                }
+                $payments[] = ['date' => $date, 'amount' => $amount];
+            }
+            if ($pledgeNo === '') $pledgeNo = pledge_import_extract_no($name);
+            $result[] = ['row' => $number, 'name' => $name, 'display_name' => pledge_import_display_name($name), 'phone' => trim((string)($row[4] ?? '')), 'pledge_no' => $pledgeNo, 'pledged' => $pledged, 'payments' => $payments];
+        }
+        return ['year' => $year, 'rows' => $result];
+    } finally { $zip->close(); }
+}
+function pledge_import_name_key(string $name): string {
+    $name = trim($name);
+    $name = function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+    return preg_replace('/[^\pL\pN]+/u', '', $name) ?? '';
+}
+/**
+ * Pledge-number suffixes written into names in the workbook:
+ *   "John Doe - No 12", "Jane No. 7", "Kitaka Patrick-No 22 RIP", "Okatch Edison- N0 46" (zero for O),
+ *   and a bare trailing number after a dash: "Sentamu -286", "Joy-515", "Jennifer - 605".
+ */
+const PLEDGE_NAME_NO_PATTERNS = [
+    '/\s*[-–]?\s*\bN[o0]\.?\s*[-:]?\s*(\d+)\b\s*/iu',
+    '/\s*[-–]\s*(\d+)\s*$/u',
+];
+function pledge_import_name_base_key(string $name): string {
+    return pledge_import_name_key(pledge_import_display_name($name));
+}
+function pledge_import_extract_no(string $name): string {
+    foreach (PLEDGE_NAME_NO_PATTERNS as $pattern) {
+        if (preg_match($pattern, trim($name), $m)) return $m[1];
+    }
+    return '';
+}
+function pledge_import_display_name(string $name): string {
+    $name = trim($name);
+    foreach (PLEDGE_NAME_NO_PATTERNS as $pattern) $name = (string)preg_replace($pattern, ' ', $name);
+    return trim((string)preg_replace('/\s{2,}/', ' ', $name), " \t-–");
+}
+/**
+ * Accepts YYYY-MM-DD, DD/MM/YYYY (also with - or .), Excel styles such as 4-Jan-2026 / 04-Jan-26,
+ * and Excel date serial numbers. Returns YYYY-MM-DD, or '' when the date is not valid.
+ */
+function normalize_date(string $date): string {
+    $date = trim($date);
+    if ($date === '') return '';
+    if (preg_match('/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/', $date, $m)) {
+        return checkdate((int)$m[2], (int)$m[1], (int)$m[3]) ? sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]) : '';
+    }
+    if (preg_match('/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T].*)?$/', $date, $m)) {
+        return checkdate((int)$m[2], (int)$m[3], (int)$m[1]) ? sprintf('%04d-%02d-%02d', $m[1], $m[2], $m[3]) : '';
+    }
+    if (preg_match('/^\d{5}(?:\.\d+)?$/', $date)) { // Excel serial, e.g. 46026
+        return (new DateTimeImmutable('1899-12-30'))->modify('+'.(int)$date.' days')->format('Y-m-d');
+    }
+    $formats = preg_match('/\d{4}$/', $date) ? ['j-M-Y', 'j M Y', 'j F Y', 'M j, Y', 'F j, Y'] : ['j-M-y', 'j M y'];
+    foreach ($formats as $format) {
+        $d = DateTimeImmutable::createFromFormat('!'.$format, $date);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($d && (!$errors || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) return $d->format('Y-m-d');
+    }
+    return '';
+}
+const PLEDGE_STATUSES = ['Pending', 'Partial', 'Fulfilled', 'Cancelled'];
+function pledge_import_phone_key(string $phone): string { return preg_replace('/\D+/', '', $phone) ?? ''; }
+function pledge_import_no_key(string $number): string { return strtoupper(preg_replace('/[^\pL\pN]+/u', '', trim($number)) ?? ''); }
+
 try {
     if (!table_exists('pledges')) pj(false, 'pledges table does not exist.');
     $action = $_REQUEST['action'] ?? 'list';
+
+    if ($action === 'prepare_pledges') {
+        if (!table_exists('pledge_payments')) pj(false, 'pledge_payments table does not exist.');
+        $file = $_FILES['pledge_workbook'] ?? null;
+        if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) pj(false, 'Select the pledges Excel workbook first.');
+        if (($file['size'] ?? 0) > 12 * 1024 * 1024 || strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION)) !== 'xlsx') pj(false, 'Upload an .xlsx workbook smaller than 12 MB.');
+        try { $workbookData = read_pledges_xlsx((string)$file['tmp_name']); }
+        catch (Throwable $e) { pj(false, $e->getMessage()); }
+        $importYear = (int)$workbookData['year']; $sourceRows = $workbookData['rows'];
+        if (!$sourceRows) pj(false, 'No pledge rows with an amount were found on the first worksheet.');
+        $members = many("SELECT id, full_name, member_no, ".(col_exists('members','pledge_no') ? 'pledge_no' : "'' AS pledge_no").", ".(col_exists('members','phone') ? 'phone' : (col_exists('members','mobile') ? 'mobile AS phone' : "'' AS phone"))." FROM members");
+        $byName = []; $byBaseName = []; $byPhone = []; $byPledgeNo = [];
+        foreach ($members as $member) {
+            $nk = pledge_import_name_key((string)$member['full_name']); if ($nk !== '') $byName[$nk][] = $member;
+            $bk = pledge_import_name_base_key((string)$member['full_name']); if ($bk !== '') $byBaseName[$bk][] = $member;
+            $pk = pledge_import_phone_key((string)$member['phone']); if ($pk !== '') $byPhone[$pk][] = $member;
+            $pledgeKey = pledge_import_no_key((string)$member['pledge_no']); if ($pledgeKey !== '') $byPledgeNo[$pledgeKey][] = $member;
+        }
+        // Preparation is deliberately read-only: export only unmatched people and
+        // recorded payments so they can be reviewed/imported separately.
+        $missingMembers = []; $missingSeen = []; $paidEntries = []; $skipped = [];
+        foreach ($sourceRows as $source) {
+            $phoneKey = pledge_import_phone_key($source['phone']); $nameKey = pledge_import_name_key($source['name']); $baseNameKey = pledge_import_name_base_key($source['name']); $pledgeKey = pledge_import_no_key($source['pledge_no'] ?? '');
+            $matches = []; $ambiguous = false;
+            if ($pledgeKey !== '' && isset($byPledgeNo[$pledgeKey])) { $matches = $byPledgeNo[$pledgeKey]; $ambiguous = count($matches) !== 1; }
+            if (!$matches && $phoneKey !== '' && isset($byPhone[$phoneKey])) { $matches = $byPhone[$phoneKey]; $ambiguous = count($matches) !== 1; }
+            if (!$matches && isset($byName[$nameKey])) { $matches = $byName[$nameKey]; $ambiguous = count($matches) !== 1; }
+            if (!$matches && isset($byBaseName[$baseNameKey])) { $matches = $byBaseName[$baseNameKey]; $ambiguous = count($matches) !== 1; }
+            // Use the matched member's pledge number when the workbook row has none, so the
+            // paid-entries CSV can be imported without blank pledge numbers.
+            $exportPledgeNo = (string)$source['pledge_no'];
+            if ($exportPledgeNo === '' && count($matches) === 1) $exportPledgeNo = trim((string)$matches[0]['pledge_no']);
+            if ($source['payments'] && $exportPledgeNo === '') {
+                $skipped[] = 'No pledge number for '.$source['name'].' (Excel row '.$source['row'].'); its payments were not exported.';
+            } else {
+                foreach ($source['payments'] as $payment) $paidEntries[] = [$source['display_name'], $source['phone'], $exportPledgeNo, $importYear, $source['pledged'], $payment['date'], $payment['amount']];
+            }
+            if (count($matches) !== 1) {
+                if ($ambiguous) { $skipped[] = 'Ambiguous member match; not exported as missing: '.$source['name'].' (Excel row '.$source['row'].')'; continue; }
+                $missingKey = $pledgeKey !== '' ? 'pledge:'.$pledgeKey : ($phoneKey !== '' ? 'phone:'.$phoneKey : 'name:'.$nameKey);
+                if (!isset($missingSeen[$missingKey])) {
+                    $missingSeen[$missingKey] = true;
+                    $missingMembers[] = [$source['display_name'], 'Not Specified', $source['phone'], '', '', '', '', sprintf('%04d-01-01', $importYear), '', '', 'Prepared from pledges workbook '.$importYear, 'Active', $source['pledge_no'], ''];
+                }
+                continue;
+            }
+            $memberPledgeNo = pledge_import_no_key((string)$matches[0]['pledge_no']);
+            if ($pledgeKey !== '' && $memberPledgeNo !== '' && $pledgeKey !== $memberPledgeNo) $skipped[] = 'Pledge number mismatch for '.$source['name'].': workbook '.$source['pledge_no'].' vs member record '.$matches[0]['pledge_no'];
+        }
+        pj(true, "Prepared {$importYear} review files: ".count($missingMembers)." unmatched member(s), ".count($paidEntries)." paid pledge entry/entries. Nothing was imported.", [
+            'year' => $importYear,
+            'missing_members' => array_merge([['full_name','gender','phone','email','occupation','marital_status','date_of_birth','joined_date','baptism_date','address','notes','status','pledge_no','service_attended']], $missingMembers),
+            'paid_entries' => array_merge([['member_name','phone','pledge_no','pledge_year','amount_pledged','paid_on','amount_paid']], $paidEntries),
+            'skipped' => $skipped
+        ]);
+    }
+
+    if ($action === 'import_prepared_paid_csv') {
+        if (!table_exists('pledge_payments')) pj(false, 'pledge_payments table does not exist.');
+        $file = $_FILES['paid_csv'] ?? null;
+        if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) pj(false, 'Choose the prepared paid-pledges CSV file.');
+        if (($file['size'] ?? 0) > 12 * 1024 * 1024 || strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION)) !== 'csv') pj(false, 'Upload a CSV file smaller than 12 MB.');
+        $fh = fopen((string)$file['tmp_name'], 'rb');
+        if (!$fh) pj(false, 'Could not read the uploaded CSV file.');
+        $header = fgetcsv($fh);
+        if (!$header) { fclose($fh); pj(false, 'The uploaded CSV is empty.'); }
+        $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$header[0]);
+        $columns = array_flip(array_map(static fn($v) => strtolower(trim((string)$v)), $header));
+        foreach (['pledge_no','pledge_year','amount_pledged','paid_on','amount_paid'] as $required) {
+            if (!isset($columns[$required])) { fclose($fh); pj(false, 'This is not a prepared paid-pledges CSV. Missing column: '.$required); }
+        }
+        // Rows that cannot be imported are skipped and reported (grouped by person), rather than
+        // rejecting the whole file. Re-uploading a corrected file is safe: payments already
+        // imported are recognised as duplicates.
+        $entries = []; $line = 1; $rejected = [];
+        $reject = static function (string $who, string $reason, int $line) use (&$rejected): void {
+            $key = $who.'|'.$reason;
+            if (!isset($rejected[$key])) $rejected[$key] = ['who' => $who, 'reason' => $reason, 'lines' => []];
+            $rejected[$key]['lines'][] = $line;
+        };
+        while (($row = fgetcsv($fh)) !== false) {
+            $line++;
+            if (!array_filter($row, static fn($c) => trim((string)$c) !== '')) continue; // blank line
+            $value = static fn($key) => isset($columns[$key]) ? trim((string)($row[$columns[$key]] ?? '')) : '';
+            $memberName = $value('member_name');
+            $no = $value('pledge_no');
+            if ($no === '' && $memberName !== '') $no = pledge_import_extract_no($memberName);
+            $year = (int)$value('pledge_year');
+            $amount = (float)str_replace([',',' '], '', $value('amount_paid'));
+            $pledged = (float)str_replace([',',' '], '', $value('amount_pledged'));
+            $date = normalize_date($value('paid_on'));
+            $problems = [];
+            if ($no === '') $problems[] = 'no pledge number (add it in the pledge_no column)';
+            if ($year < 2000 || $year > 2100) $problems[] = 'pledge year "'.$value('pledge_year').'" is invalid';
+            if ($pledged <= 0) $problems[] = 'amount pledged is missing';
+            if ($amount <= 0) $problems[] = 'amount paid is missing';
+            if ($date === '') $problems[] = 'paid date "'.$value('paid_on').'" is not a valid date';
+            if ($problems) { $reject($memberName !== '' ? $memberName : 'Pledge '.$no, implode('; ', $problems), $line); continue; }
+            $entries[] = ['line'=>$line,'name'=>$memberName,'pledge_no'=>$no,'year'=>$year,'amount_pledged'=>$pledged,'paid_on'=>$date,'amount_paid'=>$amount];
+        }
+        fclose($fh);
+        $typesReady = pledge_types_ready($conn); $created = 0; $paymentsAdded = 0; $duplicates = 0;
+        $hasPledgeNoCol = col_exists('members', 'pledge_no');
+        $membersByNo = [];
+        $conn->begin_transaction();
+        try {
+            foreach ($entries as $i => $entry) {
+                $who = $entry['name'] !== '' ? $entry['name'] : 'Pledge '.$entry['pledge_no'];
+                if (!$hasPledgeNoCol) { $reject($who, 'members table has no pledge_no column', $entry['line']); continue; }
+                $noKey = $entry['pledge_no'];
+                if (!isset($membersByNo[$noKey])) {
+                    $number = hsql($noKey);
+                    $membersByNo[$noKey] = many("SELECT id, pledge_no FROM members WHERE TRIM(pledge_no)='$number' LIMIT 2");
+                }
+                $memberMatches = $membersByNo[$noKey];
+                if (count($memberMatches) === 0) { $reject($who, 'pledge number '.$noKey.' is not on any member (import the missing members file first)', $entry['line']); continue; }
+                if (count($memberMatches) > 1) { $reject($who, 'pledge number '.$noKey.' is on more than one member', $entry['line']); continue; }
+                $member = $memberMatches[0];
+                $memberId = (int)$member['id']; $year = (int)$entry['year'];
+                $where = $typesReady ? "pledge_type='Annual' AND pledge_year=$year" : "pledge_reason='Annual Pledge $year'";
+                $pledge = one("SELECT id,amount_pledged FROM pledges WHERE member_id=$memberId AND $where AND status<>'Cancelled' ORDER BY id DESC LIMIT 1");
+                if (!$pledge) {
+                    $pledgeNo = (string)$member['pledge_no']; $reason = 'Annual Pledge '.$year; $date = sprintf('%04d-01-01',$year); $pending='Pending'; $paid=0.0; $note='Imported from prepared paid-pledges CSV';
+                    if ($typesReady) {
+                        $stmt=$conn->prepare("INSERT INTO pledges (pledge_no,member_id,pledge_reason,amount_pledged,amount_paid,pledge_date,status,notes,pledge_type,pledge_year) VALUES (?,?,?,?,?,?,?,?,'Annual',?)");
+                        $stmt->bind_param('sisddsssi',$pledgeNo,$memberId,$reason,$entry['amount_pledged'],$paid,$date,$pending,$note,$year);
+                    } else {
+                        $stmt=$conn->prepare('INSERT INTO pledges (pledge_no,member_id,pledge_reason,amount_pledged,amount_paid,pledge_date,status,notes) VALUES (?,?,?,?,?,?,?,?)');
+                        $stmt->bind_param('sisddsss',$pledgeNo,$memberId,$reason,$entry['amount_pledged'],$paid,$date,$pending,$note);
+                    }
+                    if (!$stmt->execute()) throw new RuntimeException('Could not create annual pledge for '.$entry['pledge_no'].': '.$stmt->error);
+                    $pledgeId=(int)$stmt->insert_id; $stmt->close(); $created++;
+                } else {
+                    $pledgeId=(int)$pledge['id'];
+                    if (abs((float)$pledge['amount_pledged']-(float)$entry['amount_pledged'])>0.005) {
+                        $amountPledged=(float)$entry['amount_pledged']; $stmt=$conn->prepare('UPDATE pledges SET amount_pledged=? WHERE id=?'); $stmt->bind_param('di',$amountPledged,$pledgeId); $stmt->execute(); $stmt->close();
+                        recalc_pledge($pledgeId);
+                    }
+                }
+                $dup=$conn->prepare('SELECT id FROM pledge_payments WHERE pledge_id=? AND amount=? AND paid_on=? LIMIT 1');
+                $amountPaid=(float)$entry['amount_paid']; $paidOn=$entry['paid_on']; $dup->bind_param('ids',$pledgeId,$amountPaid,$paidOn); $dup->execute(); $already=$dup->get_result()->fetch_assoc(); $dup->close();
+                if ($already) { $duplicates++; continue; }
+                $receipt=next_no('RCP', $i + 1); $method='Cash'; $notes='Imported from prepared paid-pledges CSV';
+                $stmt=$conn->prepare('INSERT INTO pledge_payments (pledge_id,amount,paid_on,method,receipt_no,notes) VALUES (?,?,?,?,?,?)');
+                $stmt->bind_param('idssss',$pledgeId,$amountPaid,$paidOn,$method,$receipt,$notes);
+                if (!$stmt->execute()) throw new RuntimeException('Payment import failed for pledge '.$entry['pledge_no'].': '.$stmt->error);
+                $stmt->close(); $paymentsAdded++; recalc_pledge($pledgeId);
+            }
+            $conn->commit();
+        } catch (Throwable $e) { $conn->rollback(); throw $e; }
+        $rejectedRows = 0; $notes = [];
+        foreach ($rejected as $r) {
+            $rejectedRows += count($r['lines']);
+            $lines = count($r['lines']) > 1 ? 'lines '.$r['lines'][0].'–'.end($r['lines']).' ('.count($r['lines']).' rows)' : 'line '.$r['lines'][0];
+            $notes[] = $r['who'].': '.$r['reason'].' — '.$lines;
+        }
+        $message = "$paymentsAdded payment(s) imported; $created annual pledge(s) created; $duplicates already-imported payment(s) skipped.";
+        if ($rejectedRows) $message .= " $rejectedRows row(s) NOT imported — fix them in the CSV and upload it again.";
+        pj($paymentsAdded + $duplicates > 0 || !$rejectedRows, $message, ['payments'=>$paymentsAdded,'created'=>$created,'duplicates'=>$duplicates,'rejected_rows'=>$rejectedRows,'skipped'=>$notes]);
+    }
 
     if ($action === 'options') {
         pj(true, '', [
@@ -209,7 +474,21 @@ try {
 
     if ($action === 'list') {
         $status = clean($_GET['status'] ?? '');
-        $where = $status !== '' ? "WHERE p.status='".hsql($status)."'" : '';
+        $year = (int)($_GET['year'] ?? 0);
+        $type = clean($_GET['type'] ?? '');
+        $overdueOnly = (int)($_GET['overdue'] ?? 0) === 1;
+        $conditions = [];
+        if ($status !== '') $conditions[] = "p.status='".hsql($status)."'";
+        if ($overdueOnly) $conditions[] = "p.status IN('Pending','Partial') AND p.due_date IS NOT NULL AND p.due_date<CURDATE()";
+        if ($type !== '' && in_array($type, pledge_types(), true)) {
+            $conditions[] = pledge_types_ready($conn) ? "p.pledge_type='".hsql($type)."'" : ($type === 'Annual' ? "p.pledge_reason LIKE 'Annual Pledge %'" : '1=0');
+        }
+        if ($year >= 2000 && $year <= 2100) {
+            $conditions[] = pledge_types_ready($conn)
+                ? "(p.pledge_year=$year OR (p.pledge_year IS NULL AND YEAR(p.pledge_date)=$year))"
+                : "YEAR(p.pledge_date)=$year";
+        }
+        $where = $conditions ? 'WHERE '.implode(' AND ', $conditions) : '';
         [$typeSelect, $typeJoin] = pledge_purpose_sql($conn);
         $rows = many("SELECT p.*, m.full_name AS full_name, m.member_no, m.email, m.phone, pr.name AS project_name $typeSelect
             FROM pledges p
@@ -219,13 +498,19 @@ try {
             ORDER BY p.pledge_date DESC, p.id DESC");
         foreach ($rows as &$r) $r['purpose'] = pledge_purpose($r);
         unset($r);
-        // Cancelled pledges are left out of the money totals.
+        // Cancelled pledges are left out of money totals unless the user filtered to them.
+        $statsWhere = $where;
+        if ($status !== 'Cancelled') $statsWhere .= ($statsWhere === '' ? 'WHERE ' : ' AND ')."p.status<>'Cancelled'";
         $stats = one("SELECT COALESCE(SUM(amount_pledged),0) total, COALESCE(SUM(amount_paid),0) paid,
             SUM(CASE WHEN status='Pending' THEN 1 ELSE 0 END) pending,
             SUM(CASE WHEN status='Partial' THEN 1 ELSE 0 END) partial,
             SUM(CASE WHEN status='Fulfilled' THEN 1 ELSE 0 END) fulfilled,
             SUM(CASE WHEN status IN('Pending','Partial') AND due_date IS NOT NULL AND due_date<CURDATE() THEN 1 ELSE 0 END) overdue
-            FROM pledges WHERE status<>'Cancelled'");
+            FROM pledges p $statsWhere");
+        $yearColumn = pledge_types_ready($conn) ? 'COALESCE(p.pledge_year,YEAR(p.pledge_date))' : 'YEAR(p.pledge_date)';
+        $yearStats = one("SELECT COALESCE(SUM(CASE WHEN $yearColumn=".(int)date('Y')." THEN p.amount_pledged ELSE 0 END),0) this_year,
+            COALESCE(SUM(CASE WHEN $yearColumn=".((int)date('Y')-1)." THEN p.amount_pledged ELSE 0 END),0) last_year FROM pledges p WHERE p.status<>'Cancelled'");
+        $stats = array_merge($stats ?: [], $yearStats ?: []);
         pj(true, '', ['items' => $rows, 'stats' => $stats ?: []]);
     }
 
@@ -292,6 +577,34 @@ try {
         if (!$ok) pj(false, 'Insert failed: '.$conn->error);
         $newId = (int)$conn->insert_id;
         pj(true, 'Pledge recorded successfully.', ['id' => $newId, 'pledge_no' => $memberPledgeNo]);
+    }
+
+    if ($action === 'save_bulk') {
+        $entries = json_decode((string)($_POST['entries'] ?? ''), true);
+        if (!is_array($entries) || !$entries) pj(false, 'Add at least one pledge entry.');
+        if (count($entries) > 100) pj(false, 'A maximum of 100 pledge entries can be saved at once.');
+        $stmt = $conn->prepare('INSERT INTO pledges (pledge_no,member_id,pledge_reason,amount_pledged,amount_paid,pledge_date,status,notes) VALUES (?,?,?,?,0,?,\'Pending\',?)');
+        if (!$stmt) pj(false, 'Could not prepare pledge entries: '.$conn->error);
+        $saved = 0; $errors = [];
+        $conn->begin_transaction();
+        try {
+            foreach ($entries as $i => $entry) {
+                $memberId = (int)($entry['member_id'] ?? 0);
+                $amount = (float)($entry['amount_pledged'] ?? 0);
+                $reason = clean($entry['pledge_reason'] ?? '');
+                $date = normalize_date(clean($entry['pledge_date'] ?? '') ?: date('Y-m-d'));
+                $notes = clean($entry['notes'] ?? '');
+                if ($memberId <= 0 || $amount <= 0 || $date === '') throw new RuntimeException('Entry '.($i+1).': select a member, enter a positive amount, and provide a valid date.');
+                $pledgeNo = member_pledge_no($memberId);
+                if ($pledgeNo === '') throw new RuntimeException('Entry '.($i+1).': the selected member has no pledge number.');
+                $stmt->bind_param('sisdss', $pledgeNo, $memberId, $reason, $amount, $date, $notes);
+                if (!$stmt->execute()) throw new RuntimeException('Entry '.($i+1).' failed: '.$stmt->error);
+                $saved++;
+            }
+            $conn->commit();
+        } catch (Throwable $e) { $conn->rollback(); $stmt->close(); throw $e; }
+        $stmt->close();
+        pj(true, $saved.' pledge entries recorded successfully.', ['created' => $saved]);
     }
 
     if ($action === 'pay') {
