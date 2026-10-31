@@ -15,11 +15,29 @@ declare(strict_types=1);
 const YOUTH_DEFAULT_MIN_AGE = 13;
 const YOUTH_DEFAULT_MAX_AGE = 35;
 
+/** One site_settings value; uses site_setting() where the site has it, otherwise reads the table directly. */
+function youth_setting(string $key, string $default): string
+{
+    if (function_exists('site_setting')) return site_setting($key, $default);
+    $conn = $GLOBALS['conn'] ?? null;
+    if (!($conn instanceof mysqli)) return $default;
+    try {
+        $stmt = $conn->prepare('SELECT setting_value FROM site_settings WHERE setting_key = ? LIMIT 1');
+        $stmt->bind_param('s', $key);
+        $stmt->execute();
+        $value = trim((string)($stmt->get_result()->fetch_assoc()['setting_value'] ?? ''));
+        $stmt->close();
+        return $value !== '' ? $value : $default;
+    } catch (Throwable $e) {
+        return $default;
+    }
+}
+
 /** The youth age range from Site Settings: [min, max]. */
 function youth_age_range(): array
 {
-    $min = (int)site_setting('youth_min_age', (string)YOUTH_DEFAULT_MIN_AGE);
-    $max = (int)site_setting('youth_max_age', (string)YOUTH_DEFAULT_MAX_AGE);
+    $min = (int)youth_setting('youth_min_age', (string)YOUTH_DEFAULT_MIN_AGE);
+    $max = (int)youth_setting('youth_max_age', (string)YOUTH_DEFAULT_MAX_AGE);
     if ($min < 1 || $min > 99 || $max < $min || $max > 99) {
         return [YOUTH_DEFAULT_MIN_AGE, YOUTH_DEFAULT_MAX_AGE];
     }
