@@ -618,21 +618,21 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                 </h4>
                 <button type="button" class="close-btn js-close-member-modal">&times;</button>
             </div>
-            <form id="memberForm">
+            <form id="memberForm" data-form-tabs>
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="id"     value="0">
                 <div class="modal-body">
                     <div class="member-form-grid">
-                        <div class="form-group"><label>Member No</label><input class="form-control" name="member_no" placeholder="Auto-generated if blank"></div>
+                        <div class="form-group" data-tab-start="Personal"><label>Member No</label><input class="form-control" name="member_no" placeholder="Auto-generated if blank"></div>
                         <div class="form-group"><label>Pledge No</label><input class="form-control" name="pledge_no" maxlength="50" placeholder="e.g. P-001"></div>
                         <div class="form-group full-span"><label>Full Name <span class="req">*</span></label><input class="form-control" name="full_name" required></div>
                         <div class="form-group"><label>Gender <span class="req">*</span></label><select class="form-control" name="gender" required><option value="">Select</option><option>Male</option><option>Female</option></select></div>
                         <div class="form-group"><label>Date of Birth</label><input type="date" class="form-control" name="date_of_birth"></div>
                         <div class="form-group"><label>Marital Status</label><select class="form-control" name="marital_status"><option>Single</option><option>Married</option><option>Widowed</option><option>Divorced</option></select></div>
                         <div class="form-group"><label>Occupation</label><input class="form-control" name="occupation"></div>
-                        <div class="form-group"><label>Phone</label><input class="form-control" name="phone"></div>
+                        <div class="form-group" data-tab-start="Contact"><label>Phone</label><input class="form-control" name="phone"></div>
                         <div class="form-group"><label>Email</label><input type="email" class="form-control" name="email"></div>
-                        <div class="form-group"><label>Department</label><select class="form-control" name="dept_id"><option value="">None</option><?php foreach($departments as $d): ?><option value="<?= (int)$d['id'] ?>"><?= h($d['name']) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group" data-tab-start="Church Details"><label>Department</label><select class="form-control" name="dept_id"><option value="">None</option><?php foreach($departments as $d): ?><option value="<?= (int)$d['id'] ?>"><?= h($d['name']) ?></option><?php endforeach; ?></select></div>
                         <div class="form-group"><label>Role in Department</label><input class="form-control" name="dept_role" value="Member"></div>
                         <div class="form-group"><label>Joined Date</label><input type="date" class="form-control" name="joined_date" value="<?= h(date('Y-m-d')) ?>"></div>
                         <div class="form-group"><label>Baptism Date</label><input type="date" class="form-control" name="baptism_date"></div>
@@ -640,8 +640,8 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                         <div class="form-group"><label>Service Attended</label><input class="form-control" name="service_attended" list="memberServiceOptions" maxlength="120" placeholder="e.g. First Service"></div>
                         <div class="form-group"><label>Status</label><select class="form-control" name="status"><option>Active</option><option>Inactive</option></select></div>
                     </div>
-                    <div class="form-group"><label>Address</label><textarea class="form-control" name="address" rows="3"></textarea></div>
-                    <div class="form-group"><label>Notes</label><textarea class="form-control" name="notes" rows="3"></textarea></div>
+                    <div class="form-group" data-tab="Contact"><label>Address</label><textarea class="form-control" name="address" rows="3"></textarea></div>
+                    <div class="form-group" data-tab="Church Details"><label>Notes</label><textarea class="form-control" name="notes" rows="3"></textarea></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline js-close-member-modal"><i class="fas fa-times"></i> Cancel</button>

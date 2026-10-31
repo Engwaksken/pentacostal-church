@@ -335,7 +335,7 @@ $pageTitle = 'Converts & Nurture';
 <!-- Add/Edit Convert -->
 <div class="cb-modal" id="convertFormModal" aria-hidden="true">
     <div class="cb-modal-card">
-        <form method="post" action="process-convert.php" id="convertForm">
+        <form method="post" action="process-convert.php" id="convertForm" data-form-tabs>
             <div class="cb-modal-head"><h3><i class="fas fa-seedling"></i> <span id="convertModalTitle">Add Convert</span></h3><button class="cb-modal-close" type="button" data-cb-close>&times;</button></div>
             <div class="cb-modal-body">
                 <input type="hidden" name="csrf_token" value="<?= cb_h($csrf) ?>">

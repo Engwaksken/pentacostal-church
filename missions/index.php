@@ -97,7 +97,7 @@ function ms_member_options(array $members) {
 <!-- New / edit mission -->
 <div class="ms-modal" id="missionModal" aria-hidden="true">
     <div class="ms-dialog">
-        <form id="missionForm">
+        <form id="missionForm" data-form-tabs data-form-tabs-first="Mission Details">
             <div class="ms-modal-header"><div class="ms-modal-title" id="missionTitle"><i class="fas fa-plus"></i> New Mission</div><button type="button" class="ms-close" data-close-modal>&times;</button></div>
             <div class="ms-modal-body">
                 <div id="formAlert" class="ms-alert"></div>

@@ -305,6 +305,7 @@ if ($prefillVisitor) {
         .pr-plan strong{color:#044e3a}.pr-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
         .pr-check{display:flex;align-items:flex-start;gap:9px;padding:10px 0}.pr-check input{margin-top:3px}
     </style>
+<link rel="stylesheet" href="../assets/css/form-tabs.css">
 <?= site_theme_css() ?></head>
 <body>
 <div class="pr-wrap">
@@ -357,7 +358,7 @@ if ($prefillVisitor) {
 
                 <p class="pr-note">Complete the form below. Fields marked * are required.</p>
 
-                <form method="post" autocomplete="on">
+                <form method="post" autocomplete="on" data-form-tabs>
                     <input type="hidden" name="csrf_token" value="<?= cb_h($csrf) ?>">
                     <input type="hidden" name="token" value="<?= cb_h($token) ?>">
                     <div class="pr-honeypot" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
@@ -478,5 +479,6 @@ if ($prefillVisitor) {
     syncMemberField();
 })();
 </script>
+<script src="../assets/js/form-tabs.js"></script>
 </body>
 </html>

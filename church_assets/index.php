@@ -101,7 +101,7 @@ function ca_options(array $values, $selected = null) {
 <!-- New / edit asset -->
 <div class="ca-modal" id="assetModal" aria-hidden="true">
     <div class="ca-dialog">
-        <form id="assetForm">
+        <form id="assetForm" data-form-tabs data-form-tabs-first="Asset Details">
             <div class="ca-modal-header"><div class="ca-modal-title" id="assetTitle"><i class="fas fa-plus"></i> New Asset</div><button type="button" class="ca-close" data-close-modal>&times;</button></div>
             <div class="ca-modal-body">
                 <div id="formAlert" class="ca-alert"></div>
