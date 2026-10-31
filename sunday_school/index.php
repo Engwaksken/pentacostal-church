@@ -137,7 +137,7 @@ try {
 <!-- CLASSES TAB -->
 <section id="tabClasses">
   <div class="card"><div class="card-body">
-    <div class="ss-toolbar"><h4 class="mb-0">Classes Overview</h4><button type="button" class="btn btn-outline" id="btnRefreshClasses"><i class="fas fa-sync"></i> Refresh</button></div>
+    <div class="ss-toolbar"><h4 class="mb-0">Classes Overview</h4><div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-primary" id="btnStandardClasses" title="Set up Nursery 3-5, Junior 6-12 and Senior 13-17"><i class="fas fa-magic"></i> Use Standard Classes</button><button type="button" class="btn btn-outline" id="btnRefreshClasses"><i class="fas fa-sync"></i> Refresh</button></div></div>
     <div id="classesGrid" class="ss-class-grid"><div class="text-muted">Loading classes...</div></div>
   </div></div>
 </section>

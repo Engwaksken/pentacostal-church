@@ -507,6 +507,39 @@
     /* =========================================================
        REFRESH ALL
     ========================================================= */
+    async function useStandardClasses(btn) {
+        const ok = window.confirm(
+            'Set up the three standard classes?\n\n' +
+            '  Nursery: ages 3-5\n  Junior: ages 6-12\n  Senior: ages 13-17\n\n' +
+            'Existing classes with these names keep their teacher and notes. Pupils in any other class are moved to ' +
+            'the class for their age; other classes are removed, or kept without an age range if they have attendance history.'
+        );
+        if (!ok) return;
+        const old = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Setting up...';
+        try {
+            const body = new FormData();
+            body.append('action', 'use_standard_classes');
+            const d = await request(endpoint, { method: 'POST', body });
+            if (!d.success) return showAlert(qs('#ssAlert'), d.message || 'Failed.', 'error');
+            // Reload so every class drop-down lists the new classes; the message is shown after the reload.
+            try { sessionStorage.setItem('ssFlash', d.message || 'Done.'); } catch (e) {}
+            window.location.reload();
+            return;
+        } catch (err) {
+            showAlert(qs('#ssAlert'), err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = old;
+        }
+    }
+
+    try {
+        const flash = sessionStorage.getItem('ssFlash');
+        if (flash) { sessionStorage.removeItem('ssFlash'); showAlert(qs('#ssAlert'), flash); }
+    } catch (e) {}
+
     async function refreshAll() {
         await Promise.all([loadStats(), loadClasses(), loadPupils()]);
     }
@@ -573,6 +606,7 @@
         // Class CRUD
         if (t.id === 'btnAddClass')     { resetClass(); openModal('#classModal'); }
         if (t.id === 'btnRefreshClasses') loadClasses().catch(err => showAlert(qs('#ssAlert'), err.message, 'error'));
+        if (t.id === 'btnStandardClasses') useStandardClasses(t);
         if (t.dataset.editClass)          openEditClass(t.dataset.editClass);
         if (t.dataset.deleteClass) {
             qs('#deleteAction').value     = 'delete_class';

@@ -275,6 +275,105 @@ function sunday_school_sync_summary(array $sync): string
     return $text;
 }
 
+/** The standard Sunday school classes: pre-school, primary school and teenagers, covering ages 3-17 with no gap. */
+const SUNDAY_SCHOOL_STANDARD_CLASSES = [
+    ['name' => 'Nursery', 'min' => 3,  'max' => 5],
+    ['name' => 'Junior',  'min' => 6,  'max' => 12],
+    ['name' => 'Senior',  'min' => 13, 'max' => 17],
+];
+
+/**
+ * Sets up the three standard classes. An existing class with the same name (or, failing that, the most similar
+ * age range) is reused, so its teacher, capacity and notes are kept. Other classes lose their pupils, who are
+ * re-placed by age; an extra class is deleted unless it has attendance history, in which case it is kept with its
+ * age range cleared so that history still shows the class. Returns a summary for the save message.
+ */
+function sunday_school_apply_standard_classes(mysqli $conn): array
+{
+    sunday_school_sync_prepare($conn);
+    $summary = ['updated' => [], 'created' => [], 'deleted' => [], 'kept' => []];
+
+    $existing = [];
+    $res = $conn->query('SELECT id, class_name, age_range FROM sunday_school_classes ORDER BY id');
+    while ($res && $row = $res->fetch_assoc()) {
+        $range = sunday_school_parse_range($row['age_range'] ?? '');
+        $existing[(int)$row['id']] = ['id' => (int)$row['id'], 'name' => (string)$row['class_name'], 'range' => $range];
+    }
+
+    // Choose which existing class becomes each standard class: same name first, then the closest age range.
+    $chosen = [];
+    foreach (SUNDAY_SCHOOL_STANDARD_CLASSES as $i => $std) {
+        foreach ($existing as $id => $class) {
+            if (!in_array($id, $chosen, true) && strcasecmp(trim($class['name']), $std['name']) === 0) { $chosen[$i] = $id; break; }
+        }
+    }
+    foreach (SUNDAY_SCHOOL_STANDARD_CLASSES as $i => $std) {
+        if (isset($chosen[$i])) continue;
+        $best = null; $bestOverlap = 0;
+        foreach ($existing as $id => $class) {
+            if (in_array($id, $chosen, true) || !$class['range']) continue;
+            $overlap = min($std['max'], $class['range'][1]) - max($std['min'], $class['range'][0]) + 1;
+            if ($overlap > $bestOverlap) { $best = $id; $bestOverlap = $overlap; }
+        }
+        if ($best !== null) $chosen[$i] = $best;
+    }
+
+    $conn->begin_transaction();
+    try {
+        $update = $conn->prepare('UPDATE sunday_school_classes SET class_name = ?, age_range = ? WHERE id = ?');
+        $insert = $conn->prepare('INSERT INTO sunday_school_classes (class_name, age_range) VALUES (?, ?)');
+        foreach (SUNDAY_SCHOOL_STANDARD_CLASSES as $i => $std) {
+            $name = $std['name'];
+            $range = sunday_school_format_range($std['min'], $std['max']);
+            if (isset($chosen[$i])) {
+                $update->bind_param('ssi', $name, $range, $chosen[$i]);
+                $update->execute();
+                $summary['updated'][] = $name;
+            } else {
+                $insert->bind_param('ss', $name, $range);
+                $insert->execute();
+                $summary['created'][] = $name;
+            }
+        }
+        $update->close();
+        $insert->close();
+
+        $extraIds = array_diff(array_keys($existing), $chosen);
+        $release = $conn->prepare('UPDATE sunday_school_pupils SET class_id = NULL, class_locked = 0 WHERE class_id = ?');
+        $history = $conn->prepare('SELECT COUNT(*) AS c FROM sunday_school_attendance WHERE class_id = ?');
+        $delete = $conn->prepare('DELETE FROM sunday_school_classes WHERE id = ?');
+        $clear = $conn->prepare("UPDATE sunday_school_classes SET age_range = '' WHERE id = ?");
+        foreach ($extraIds as $id) {
+            $release->bind_param('i', $id);
+            $release->execute();
+            $history->bind_param('i', $id);
+            $history->execute();
+            $hasHistory = (int)($history->get_result()->fetch_assoc()['c'] ?? 0) > 0;
+            if ($hasHistory) {
+                $clear->bind_param('i', $id);
+                $clear->execute();
+                $summary['kept'][] = $existing[$id]['name'];
+            } else {
+                $delete->bind_param('i', $id);
+                $delete->execute();
+                $summary['deleted'][] = $existing[$id]['name'];
+            }
+        }
+        $release->close();
+        $history->close();
+        $delete->close();
+        $clear->close();
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        throw $e;
+    }
+
+    $summary['sync'] = sunday_school_auto_sync($conn);
+    return $summary;
+}
+
 /**
  * When an admin saves a pupil: lock them (the sync then leaves them alone) if the chosen class is not the one
  * for their age, or if they are kept Active although older than every class; unlock them otherwise.

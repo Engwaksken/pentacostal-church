@@ -751,6 +751,17 @@ try {
         ss_json(true, 'Class updated successfully.' . sunday_school_sync_summary(sunday_school_auto_sync($conn)));
     }
 
+    /* USE STANDARD CLASSES (Nursery 3-5, Junior 6-12, Senior 13-17) */
+    if ($action === 'use_standard_classes') {
+        require_once __DIR__ . '/../includes/sunday-school-sync.php';
+        $r = sunday_school_apply_standard_classes($conn);
+        $msg = 'Standard classes set: Nursery (3-5), Junior (6-12) and Senior (13-17).';
+        if ($r['created']) $msg .= ' Created: ' . implode(', ', $r['created']) . '.';
+        if ($r['deleted']) $msg .= ' Removed: ' . implode(', ', $r['deleted']) . '.';
+        if ($r['kept']) $msg .= ' Kept for attendance history (no longer used for placement): ' . implode(', ', $r['kept']) . '.';
+        ss_json(true, $msg . sunday_school_sync_summary($r['sync']));
+    }
+
     /* DELETE PUPIL */
     if ($action === 'delete_pupil') {
         $id = ss_int($_POST['id'] ?? 0);
