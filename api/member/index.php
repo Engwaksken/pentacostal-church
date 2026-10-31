@@ -23,6 +23,7 @@ try {
     }
 
     switch ($action) {
+        case 'branding':        mapi_action_branding($conn); break;
         case 'login':           mapi_action_login($conn); break;
         case 'logout':          mapi_action_logout($conn); break;
         case 'me':              mapi_action_me($conn); break;
@@ -43,6 +44,20 @@ try {
 } catch (Throwable $e) {
     error_log('[Member API] ' . $action . ': ' . $e->getMessage());
     mapi_fail(500, 'Something went wrong. Please try again.');
+}
+
+/** Public branding used before sign-in. */
+function mapi_action_branding(mysqli $conn): never
+{
+    $logo = mapi_setting($conn, 'site_logo', mapi_setting($conn, 'logo', ''));
+    if ($logo !== '' && !preg_match('#^https?://#i', $logo) && defined('BASE_URL')) {
+        $logo = rtrim(BASE_URL, '/') . '/' . ltrim($logo, '/');
+    }
+    mapi_ok(['church' => [
+        'name' => mapi_setting($conn, 'site_name', APP_NAME),
+        'subtitle' => mapi_setting($conn, 'site_subtitle', ''),
+        'logo_url' => $logo,
+    ]]);
 }
 
 /* ------------------------------------------------------------------ account */
@@ -111,7 +126,11 @@ function mapi_action_me(mysqli $conn): never
     if ($logo !== '' && !preg_match('#^https?://#i', $logo) && defined('BASE_URL')) $logo = rtrim(BASE_URL, '/') . '/' . ltrim($logo, '/');
     mapi_ok([
         'member' => mapi_member_profile($conn, $auth['member_id']),
-        'church' => ['name' => mapi_setting($conn, 'site_name', APP_NAME), 'logo_url' => $logo],
+        'church' => [
+            'name' => mapi_setting($conn, 'site_name', APP_NAME),
+            'subtitle' => mapi_setting($conn, 'site_subtitle', ''),
+            'logo_url' => $logo,
+        ],
     ]);
 }
 
