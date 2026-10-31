@@ -27,7 +27,6 @@ try {
         case 'logout':          mapi_action_logout($conn); break;
         case 'me':              mapi_action_me($conn); break;
         case 'change_password': mapi_action_change_password($conn); break;
-        case 'zones':           mapi_action_zones($conn); break;
         case 'update_profile':  mapi_action_update_profile($conn); break;
         case 'update_photo':    mapi_action_update_photo($conn); break;
         case 'dashboard':       mapi_action_dashboard($conn); break;
@@ -149,20 +148,7 @@ function mapi_action_change_password(mysqli $conn): never
     mapi_ok(['message' => 'Your password was changed. Use it for the app and the website.']);
 }
 
-/** Church zones a member can choose on their profile. */
-function mapi_action_zones(mysqli $conn): never
-{
-    mapi_auth($conn);
-    $source = mapi_zone_source($conn);
-    if (!$source) mapi_ok(['items' => []]);
-    [$table, $nameCol] = $source;
-    $items = mapi_rows($conn, "SELECT id, `$nameCol` AS name FROM `$table` ORDER BY `$nameCol`");
-    foreach ($items as &$item) $item['id'] = (int)$item['id'];
-    unset($item);
-    mapi_ok(['items' => $items]);
-}
-
-/** Contact details and church zone, with the same rules as the web portal (member/profile.php). */
+/** Contact details and service attendance, with the same rules as the web portal (member/profile.php). */
 function mapi_action_update_profile(mysqli $conn): never
 {
     mapi_require_method('POST');
@@ -171,18 +157,10 @@ function mapi_action_update_profile(mysqli $conn): never
     $email = mb_strtolower(mapi_str($input, 'email', 120));
     $phone = mapi_str($input, 'phone', 25);
     $service = mapi_str($input, 'service_attended', 120);
-    $zoneId = (int)($input['church_zone_id'] ?? 0);
-    $zoneId = $zoneId > 0 ? $zoneId : null;
-
     $errors = [];
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Enter a valid email address.';
     if ($phone === '') $errors[] = 'Phone number is required.';
     elseif (!preg_match('/^[0-9+\-\s()]{7,25}$/', $phone)) $errors[] = 'Enter a valid phone number.';
-    $source = mapi_zone_source($conn);
-    if ($zoneId !== null && $source) {
-        [$table] = $source;
-        if (!mapi_row($conn, "SELECT id FROM `$table` WHERE id=? LIMIT 1", 'i', [$zoneId])) $errors[] = 'The selected church zone is invalid.';
-    }
     if ($email !== '' && mapi_row($conn, 'SELECT id FROM users WHERE email=? AND id<>? LIMIT 1', 'si', [$email, $auth['user_id']])) {
         $errors[] = 'That email address is already being used by another account.';
     }
@@ -198,7 +176,7 @@ function mapi_action_update_profile(mysqli $conn): never
         $sets = [];
         $types = '';
         $values = [];
-        foreach (['email' => ['s', $email], 'phone' => ['s', $phone], 'church_zone_id' => ['i', $zoneId], 'service_attended' => ['s', $service !== '' ? $service : null]] as $col => [$type, $value]) {
+        foreach (['email' => ['s', $email], 'phone' => ['s', $phone], 'service_attended' => ['s', $service !== '' ? $service : null]] as $col => [$type, $value]) {
             if (!mapi_column($conn, 'members', $col)) continue;
             $sets[] = "`$col`=?";
             $types .= $type;

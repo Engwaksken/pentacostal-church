@@ -226,42 +226,16 @@ function mapi_member_profile(mysqli $conn, int $memberId): array
         ? "COALESCE(NULLIF(TRIM(m.full_name),''), $legacy)"
         : $legacy;
     $optional = [];
-    foreach (['pledge_no', 'service_attended', 'gender', 'phone', 'email', 'address', 'joined_date', 'department', 'church_zone_id', 'photo'] as $col) {
+    foreach (['pledge_no', 'service_attended', 'gender', 'phone', 'email', 'address', 'joined_date', 'department', 'photo'] as $col) {
         $optional[] = mapi_column($conn, 'members', $col) ? "m.`$col`" : "NULL AS `$col`";
     }
     $row = mapi_row($conn, "SELECT m.id, m.member_no, $name AS full_name, " . implode(', ', $optional) . " FROM members m WHERE m.id=? LIMIT 1", 'i', [$memberId]) ?? [];
     $row['id'] = (int)($row['id'] ?? 0);
 
-    $zoneId = (int)($row['church_zone_id'] ?? 0);
-    $row['church_zone_id'] = $zoneId > 0 ? $zoneId : null;
-    $row['church_zone'] = null;
-    $zones = mapi_zone_source($conn);
-    if ($zoneId > 0 && $zones) {
-        [$table, $nameCol] = $zones;
-        $zone = mapi_row($conn, "SELECT `$nameCol` AS name FROM `$table` WHERE id=? LIMIT 1", 'i', [$zoneId]);
-        $row['church_zone'] = $zone['name'] ?? null;
-    }
-
     $photo = trim((string)($row['photo'] ?? ''));
     unset($row['photo']);
     $row['photo_url'] = $photo !== '' && defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' . ltrim($photo, '/') : null;
     return $row;
-}
-
-/**
- * Church zones table and its name column, as [table, column], or null.
- * Older databases use `zones`, newer ones `church_zones` (same lookup as member/profile.php).
- */
-function mapi_zone_source(mysqli $conn): ?array
-{
-    foreach (['church_zones', 'zones'] as $table) {
-        if (!mapi_table($conn, $table) || !mapi_column($conn, $table, 'id')) continue;
-        foreach (['zone_name', 'name', 'church_zone', 'title', 'zone'] as $col) {
-            if (mapi_column($conn, $table, $col)) return [$table, $col];
-        }
-        return null;
-    }
-    return null;
 }
 
 /** Same password rules as the web member portal (member/profile.php). */

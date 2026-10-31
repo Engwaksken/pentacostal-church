@@ -59,60 +59,6 @@ function profilePostValue(string $key): string
 
 /*
 |--------------------------------------------------------------------------
-| Discover the church-zones table
-|--------------------------------------------------------------------------
-|
-| The system may use church_zones or zones depending on the existing
-| database version. This code supports either table.
-|
-*/
-
-$zoneTable = null;
-
-foreach (['church_zones', 'zones'] as $possibleTable) {
-    if (mp_table($conn, $possibleTable)) {
-        $zoneTable = $possibleTable;
-        break;
-    }
-}
-
-$zoneIdColumn   = 'id';
-$zoneNameColumn = null;
-$zones          = [];
-
-if ($zoneTable !== null) {
-    $zoneColumns = mp_cols($conn, $zoneTable);
-
-    foreach ([
-        'zone_name',
-        'name',
-        'church_zone',
-        'title',
-        'zone'
-    ] as $possibleColumn) {
-        if (in_array($possibleColumn, $zoneColumns, true)) {
-            $zoneNameColumn = $possibleColumn;
-            break;
-        }
-    }
-
-    if (
-        in_array($zoneIdColumn, $zoneColumns, true) &&
-        $zoneNameColumn !== null
-    ) {
-        $zones = mp_rows(
-            $conn,
-            "SELECT
-                `{$zoneIdColumn}` AS id,
-                `{$zoneNameColumn}` AS zone_name
-             FROM `{$zoneTable}`
-             ORDER BY `{$zoneNameColumn}` ASC"
-        );
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
 | Process profile updates
 |--------------------------------------------------------------------------
 */
@@ -136,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /*
     |--------------------------------------------------------------------------
-    | Update contact information and church zone
+    | Update contact information
     |--------------------------------------------------------------------------
     */
 
@@ -144,16 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email  = strtolower(profilePostValue('email'));
         $phone  = profilePostValue('phone');
         $serviceAttended = mb_substr(profilePostValue('service_attended'), 0, 120, 'UTF-8');
-        $zoneId = filter_input(
-            INPUT_POST,
-            'church_zone_id',
-            FILTER_VALIDATE_INT
-        );
-
-        $zoneId = $zoneId !== false && $zoneId > 0
-            ? (int) $zoneId
-            : null;
-
         $errors = [];
 
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -164,22 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Phone number is required.';
         } elseif (!preg_match('/^[0-9+\-\s()]{7,25}$/', $phone)) {
             $errors[] = 'Enter a valid phone number.';
-        }
-
-        if ($zoneId !== null && $zoneTable !== null) {
-            $zoneExists = mp_value(
-                $conn,
-                "SELECT COUNT(*)
-                 FROM `{$zoneTable}`
-                 WHERE `{$zoneIdColumn}` = ?",
-                'i',
-                [$zoneId],
-                0
-            );
-
-            if ((int) $zoneExists === 0) {
-                $errors[] = 'The selected church zone is invalid.';
-            }
         }
 
         /*
@@ -256,12 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $memberUpdates[] = 'phone = ?';
                 $memberTypes    .= 's';
                 $memberValues[]  = $phone;
-            }
-
-            if (in_array('church_zone_id', $memberColumns, true)) {
-                $memberUpdates[] = 'church_zone_id = ?';
-                $memberTypes    .= 'i';
-                $memberValues[]  = $zoneId;
             }
 
             if (in_array('service_attended', $memberColumns, true)) {
@@ -694,32 +608,6 @@ if ($profile === null) {
     exit('Your member profile could not be found.');
 }
 
-$zoneName = 'Not assigned';
-$currentZoneId = isset($profile['church_zone_id'])
-    ? (int) $profile['church_zone_id']
-    : 0;
-
-if (
-    $currentZoneId > 0 &&
-    $zoneTable !== null &&
-    $zoneNameColumn !== null
-) {
-    $loadedZoneName = mp_value(
-        $conn,
-        "SELECT `{$zoneNameColumn}`
-         FROM `{$zoneTable}`
-         WHERE `{$zoneIdColumn}` = ?
-         LIMIT 1",
-        'i',
-        [$currentZoneId],
-        ''
-    );
-
-    if (trim((string) $loadedZoneName) !== '') {
-        $zoneName = (string) $loadedZoneName;
-    }
-}
-
 $fullName = trim((string)($profile['full_name'] ?? ''));
 
 if ($fullName === '') {
@@ -779,7 +667,7 @@ include __DIR__ . '/../includes/sidebar.php';
                 <h2>My Profile</h2>
                 <p>
                     Manage your personal contact information, profile photo,
-                    church zone and account password.
+                    department and account password.
                 </p>
             </div>
 
@@ -839,10 +727,12 @@ include __DIR__ . '/../includes/sidebar.php';
                         </strong>
                     </div>
 
-                    <div>
-                        <span>Church zone</span>
-                        <strong><?= mp_h($zoneName) ?></strong>
-                    </div>
+                    <?php if (!empty($profile['department'])): ?>
+                        <div>
+                            <span>Department</span>
+                            <strong><?= mp_h((string) $profile['department']) ?></strong>
+                        </div>
+                    <?php endif; ?>
 
                     <?php if (!empty($profile['pledge_no'])): ?>
                         <div>
@@ -951,7 +841,7 @@ include __DIR__ . '/../includes/sidebar.php';
                             <div>
                                 <h3>Contact and Church Information</h3>
                                 <p>
-                                    Keep your contact information and church zone
+                                    Keep your contact information up to date
                                     up to date.
                                 </p>
                             </div>
@@ -1114,64 +1004,6 @@ include __DIR__ . '/../includes/sidebar.php';
                                     </div>
                                 </div>
 
-                                <div class="form-group profile-zone-field">
-                                    <label for="churchZone">
-                                        Church Zone
-                                    </label>
-
-                                    <div class="input-with-icon">
-                                        <i class="fas fa-location-dot"></i>
-
-                                        <?php if ($zones !== []): ?>
-                                            <select
-                                                name="church_zone_id"
-                                                id="churchZone"
-                                                class="form-control"
-                                            >
-                                                <option value="">
-                                                    Select church zone
-                                                </option>
-
-                                                <?php foreach ($zones as $zone): ?>
-                                                    <?php
-                                                    $listedZoneId =
-                                                        (int) (
-                                                            $zone['id']
-                                                            ?? 0
-                                                        );
-                                                    ?>
-                                                    <option
-                                                        value="<?= $listedZoneId ?>"
-                                                        <?= $listedZoneId === $currentZoneId
-                                                            ? 'selected'
-                                                            : '' ?>
-                                                    >
-                                                        <?= mp_h(
-                                                            (string) (
-                                                                $zone['zone_name']
-                                                                ?? ''
-                                                            )
-                                                        ) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        <?php else: ?>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                value="<?= mp_h($zoneName) ?>"
-                                                readonly
-                                            >
-                                        <?php endif; ?>
-                                    </div>
-
-                                    <?php if ($zones === []): ?>
-                                        <small>
-                                            Church zones have not yet been
-                                            configured by the administrator.
-                                        </small>
-                                    <?php endif; ?>
-                                </div>
                             </div>
 
                             <div class="profile-form-footer">
@@ -1672,10 +1504,6 @@ include __DIR__ . '/../includes/sidebar.php';
     gap: 18px;
 }
 
-.profile-zone-field {
-    grid-column: 1 / -1;
-}
-
 .profile-card .form-group {
     margin: 0;
 }
@@ -1858,9 +1686,6 @@ include __DIR__ . '/../includes/sidebar.php';
         grid-template-columns: 1fr;
     }
 
-    .profile-zone-field {
-        grid-column: auto;
-    }
 }
 
 @media (max-width: 820px) {
