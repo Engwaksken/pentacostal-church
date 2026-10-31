@@ -10,6 +10,8 @@ $members = $conn->query("SELECT id, member_no, full_name, " . ($hasMemberPledgeN
 $projects = $conn->query("SELECT id, name FROM projects WHERE COALESCE(status,'Active')='Active' ORDER BY name");
 require_once __DIR__ . '/../includes/pledge-types.php';
 $typesReady = pledge_types_ready($conn);
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 $events = $typesReady && $conn->query("SHOW TABLES LIKE 'events'")->num_rows
     ? $conn->query("SELECT id, title, event_date FROM events ORDER BY event_date DESC")
     : null;
@@ -112,7 +114,7 @@ include '../includes/sidebar.php';
 </form></div></div>
 
 <script>
-window.PledgesConfig = { endpoint: 'process-pledges.php' };
+window.PledgesConfig = { endpoint: 'process-pledges.php', csrfToken: <?= json_encode((string)$_SESSION['csrf_token']) ?> };
 (function(){
 'use strict';
 const cfg = window.PledgesConfig; if(!cfg) return;
@@ -124,7 +126,7 @@ function alertBox(el,msg,type='success'){ if(!el)return; el.className='ajax-aler
 function clearAlert(el){ if(el){el.className='ajax-alert'; el.textContent='';} }
 function openModal(id){ qs('#pledgeBackdrop').classList.add('show'); qs(id).classList.add('show'); document.body.style.overflow='hidden'; }
 function closeModals(){ qsa('.app-modal,.app-modal-backdrop').forEach(x=>x.classList.remove('show')); document.body.style.overflow=''; }
-async function req(url,opts={}){ const res=await fetch(url,Object.assign({headers:{'X-Requested-With':'XMLHttpRequest'}},opts)); const txt=await res.text(); try{return JSON.parse(txt)}catch(e){throw new Error('Invalid server response: '+txt.slice(0,250));} }
+async function req(url,opts={}){ const res=await fetch(url,Object.assign({headers:{'X-Requested-With':'XMLHttpRequest','X-CSRF-Token':cfg.csrfToken||''}},opts)); const txt=await res.text(); try{return JSON.parse(txt)}catch(e){throw new Error('Invalid server response: '+txt.slice(0,250));} }
 async function post(form){ return req(cfg.endpoint,{method:'POST',body:new FormData(form)}); }
 function badge(s){ const map={Pending:'badge-warning',Partial:'badge-info',Fulfilled:'badge-success',Cancelled:'badge-danger'}; return `<span class="badge ${map[s]||'badge-secondary'}">${esc(s||'—')}</span>`; }
 function renderStats(st){ qs('#stTotal').textContent=money(st.total||0); qs('#stPaid').textContent=money(st.paid||0); qs('#stPending').textContent=Number(st.pending||0); qs('#stOverdue').textContent=Number(st.overdue||0); qs('#stPartial').textContent=Number(st.partial||0); qs('#stFulfilled').textContent=Number(st.fulfilled||0); }

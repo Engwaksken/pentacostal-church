@@ -28,6 +28,17 @@ if (PHP_SAPI !== 'cli') {
     require_once __DIR__ . '/../includes/access.php';
     if (empty($_SESSION['user_id'])) pj(false, 'Your session has expired. Please sign in again.');
     if (is_member_user() || !current_user_can('pledges.view')) pj(false, 'Access denied.');
+    // Anything that changes data must be a POST carrying the page's security token,
+    // so another site cannot make a signed-in user's browser change pledges.
+    $requestAction = (string)($_REQUEST['action'] ?? 'list');
+    if (!in_array($requestAction, ['list', 'get', 'options'], true)) {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') pj(false, 'Invalid request method.');
+        $sentToken = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '');
+        $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
+        if ($sessionToken === '' || !hash_equals($sessionToken, $sentToken)) {
+            pj(false, 'Security token expired. Please refresh the page and try again.');
+        }
+    }
 }
 require_once __DIR__ . '/../includes/pledge-types.php';
 function clean($v): string { return trim((string)($v ?? '')); }
@@ -94,6 +105,31 @@ function member_pledge_no(int $memberId): string {
     $stmt->close();
     return trim((string)($row['pledge_no'] ?? ''));
 }
+/**
+ * Accepts YYYY-MM-DD, DD/MM/YYYY (also with - or .), Excel styles such as 4-Jan-2026 / 04-Jan-26,
+ * and Excel date serial numbers. Returns YYYY-MM-DD, or '' when the date is not valid.
+ */
+function normalize_date(string $date): string {
+    $date = trim($date);
+    if ($date === '') return '';
+    if (preg_match('/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/', $date, $m)) {
+        return checkdate((int)$m[2], (int)$m[1], (int)$m[3]) ? sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]) : '';
+    }
+    if (preg_match('/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T].*)?$/', $date, $m)) {
+        return checkdate((int)$m[2], (int)$m[3], (int)$m[1]) ? sprintf('%04d-%02d-%02d', $m[1], $m[2], $m[3]) : '';
+    }
+    if (preg_match('/^\d{5}(?:\.\d+)?$/', $date)) { // Excel serial, e.g. 46026
+        return (new DateTimeImmutable('1899-12-30'))->modify('+'.(int)$date.' days')->format('Y-m-d');
+    }
+    $formats = preg_match('/\d{4}$/', $date) ? ['j-M-Y', 'j M Y', 'j F Y', 'M j, Y', 'F j, Y'] : ['j-M-y', 'j M y'];
+    foreach ($formats as $format) {
+        $d = DateTimeImmutable::createFromFormat('!'.$format, $date);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($d && (!$errors || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) return $d->format('Y-m-d');
+    }
+    return '';
+}
+const PLEDGE_STATUSES = ['Pending', 'Partial', 'Fulfilled', 'Cancelled'];
 function member_name(array $r): string {
     $name = trim((string)($r['full_name'] ?? ''));
     return $name !== '' ? $name : 'Member';
@@ -183,12 +219,13 @@ try {
             ORDER BY p.pledge_date DESC, p.id DESC");
         foreach ($rows as &$r) $r['purpose'] = pledge_purpose($r);
         unset($r);
+        // Cancelled pledges are left out of the money totals.
         $stats = one("SELECT COALESCE(SUM(amount_pledged),0) total, COALESCE(SUM(amount_paid),0) paid,
             SUM(CASE WHEN status='Pending' THEN 1 ELSE 0 END) pending,
             SUM(CASE WHEN status='Partial' THEN 1 ELSE 0 END) partial,
             SUM(CASE WHEN status='Fulfilled' THEN 1 ELSE 0 END) fulfilled,
             SUM(CASE WHEN status IN('Pending','Partial') AND due_date IS NOT NULL AND due_date<CURDATE() THEN 1 ELSE 0 END) overdue
-            FROM pledges");
+            FROM pledges WHERE status<>'Cancelled'");
         pj(true, '', ['items' => $rows, 'stats' => $stats ?: []]);
     }
 
@@ -210,12 +247,18 @@ try {
         $project_id = clean($_POST['project_id'] ?? '');
         $reason = clean($_POST['pledge_reason'] ?? '');
         $amount = (float)($_POST['amount_pledged'] ?? 0);
-        $pledge_date = clean($_POST['pledge_date'] ?? date('Y-m-d')) ?: date('Y-m-d');
-        $due = clean($_POST['due_date'] ?? '');
+        $pledge_date = normalize_date(clean($_POST['pledge_date'] ?? '') ?: date('Y-m-d'));
+        $dueInput = clean($_POST['due_date'] ?? '');
+        $due = $dueInput !== '' ? normalize_date($dueInput) : '';
         $status = clean($_POST['status'] ?? 'Pending') ?: 'Pending';
         $notes = clean($_POST['notes'] ?? '');
         if ($member_id <= 0) pj(false, 'Please select a member.');
         if ($amount <= 0) pj(false, 'Amount pledged must be greater than zero.');
+        if ($pledge_date === '') pj(false, 'Enter a valid pledge date.');
+        if ($dueInput !== '' && $due === '') pj(false, 'Enter a valid due date.');
+        if (!in_array($status, PLEDGE_STATUSES, true)) pj(false, 'Invalid pledge status.');
+        // Only "Cancelled" is chosen by hand; other statuses are worked out from the payments.
+        if ($status !== 'Cancelled') $status = 'Pending';
         $typeSet = '';
         if (pledge_types_ready($conn)) {
             $type = clean($_POST['pledge_type'] ?? '');
@@ -236,16 +279,18 @@ try {
         $memberPledgeNo = member_pledge_no($member_id);
         if ($memberPledgeNo === '') pj(false, 'This member has no pledge number. Set the Pledge No on the member record in Members first.');
         $no = hsql($memberPledgeNo);
+        $amountSql = sprintf('%.2F', $amount);
+        $typeSql = $typeSet !== '' ? ", $typeSet" : '';
         if ($id > 0) {
-            $ok = $conn->query("UPDATE pledges SET pledge_no='$no', member_id=$member_id, project_id=$pidSql, pledge_reason='".hsql($reason)."', amount_pledged=$amount, pledge_date='".hsql($pledge_date)."', due_date=$dueSql, status='".hsql($status)."', notes='".hsql($notes)."' WHERE id=$id");
+            if (!one("SELECT id FROM pledges WHERE id=$id LIMIT 1")) pj(false, 'Pledge not found.');
+            $ok = $conn->query("UPDATE pledges SET pledge_no='$no', member_id=$member_id, project_id=$pidSql, pledge_reason='".hsql($reason)."', amount_pledged=$amountSql, pledge_date='".hsql($pledge_date)."', due_date=$dueSql, status='".hsql($status)."', notes='".hsql($notes)."'$typeSql WHERE id=$id");
             if (!$ok) pj(false, 'Update failed: '.$conn->error);
-            if ($typeSet !== '') $conn->query("UPDATE pledges SET $typeSet WHERE id=$id");
+            recalc_pledge($id);
             pj(true, 'Pledge updated successfully.');
         }
-        $ok = $conn->query("INSERT INTO pledges (pledge_no,member_id,project_id,pledge_reason,amount_pledged,amount_paid,pledge_date,due_date,status,notes) VALUES ('$no',$member_id,$pidSql,'".hsql($reason)."',$amount,0,'".hsql($pledge_date)."',$dueSql,'".hsql($status)."','".hsql($notes)."')");
+        $ok = $conn->query("INSERT INTO pledges SET pledge_no='$no', member_id=$member_id, project_id=$pidSql, pledge_reason='".hsql($reason)."', amount_pledged=$amountSql, amount_paid=0, pledge_date='".hsql($pledge_date)."', due_date=$dueSql, status='".hsql($status)."', notes='".hsql($notes)."'$typeSql");
         if (!$ok) pj(false, 'Insert failed: '.$conn->error);
         $newId = (int)$conn->insert_id;
-        if ($typeSet !== '') $conn->query("UPDATE pledges SET $typeSet WHERE id=$newId");
         pj(true, 'Pledge recorded successfully.', ['id' => $newId, 'pledge_no' => $memberPledgeNo]);
     }
 
@@ -253,22 +298,23 @@ try {
         if (!table_exists('pledge_payments')) pj(false, 'pledge_payments table does not exist.');
         $pledge_id = (int)($_POST['pledge_id'] ?? 0);
         $amount = (float)($_POST['amount'] ?? 0);
-        $date = clean($_POST['paid_on'] ?? date('Y-m-d')) ?: date('Y-m-d');
+        $date = normalize_date(clean($_POST['paid_on'] ?? '') ?: date('Y-m-d'));
         $method = clean($_POST['method'] ?? 'Cash') ?: 'Cash';
         $notes = clean($_POST['notes'] ?? '');
-        $p = one("SELECT * FROM pledges WHERE id=$pledge_id LIMIT 1");
+        $p = $pledge_id > 0 ? one("SELECT * FROM pledges WHERE id=$pledge_id LIMIT 1") : null;
         if (!$p) pj(false, 'Pledge not found.');
+        if ($p['status'] === 'Cancelled') pj(false, 'This pledge is cancelled. Change its status before recording a payment.');
         $balance = (float)$p['amount_pledged'] - (float)$p['amount_paid'];
         if ($amount <= 0) pj(false, 'Payment amount must be greater than zero.');
-        if ($amount > $balance) pj(false, 'Payment amount cannot exceed pledge balance.');
-        $rno = hsql(next_no('RCP'));
-        $ok = $conn->query("INSERT INTO pledge_payments (pledge_id,amount,paid_on,method,receipt_no,notes) VALUES ($pledge_id,$amount,'".hsql($date)."','".hsql($method)."','$rno','".hsql($notes)."')");
-        if (!$ok) pj(false, 'Payment insert failed: '.$conn->error);
-        $paymentId = $conn->insert_id;
-        $new = one("SELECT COALESCE(SUM(amount),0) t FROM pledge_payments WHERE pledge_id=$pledge_id");
-        $paid = (float)($new['t'] ?? 0);
-        $newStatus = $paid >= (float)$p['amount_pledged'] ? 'Fulfilled' : ($paid > 0 ? 'Partial' : 'Pending');
-        $conn->query("UPDATE pledges SET amount_paid=$paid,status='$newStatus' WHERE id=$pledge_id");
+        if ($amount > $balance + 0.005) pj(false, 'Payment amount cannot exceed pledge balance.');
+        if ($date === '') pj(false, 'Enter a valid payment date.');
+        $rno = next_no('RCP');
+        $stmt = $conn->prepare('INSERT INTO pledge_payments (pledge_id,amount,paid_on,method,receipt_no,notes) VALUES (?,?,?,?,?,?)');
+        $stmt->bind_param('idssss', $pledge_id, $amount, $date, $method, $rno, $notes);
+        if (!$stmt->execute()) pj(false, 'Payment insert failed: '.$stmt->error);
+        $paymentId = (int)$stmt->insert_id;
+        $stmt->close();
+        recalc_pledge($pledge_id);
         $emailSent = pledge_member_wants((int)($p['member_id'] ?? 0) ?: null, 'payments', 'email') && send_pledge_receipt_email($paymentId);
         pj(true, $emailSent ? 'Payment recorded and receipt emailed successfully.' : 'Payment recorded successfully.', [
             'payment_id' => $paymentId,
@@ -281,13 +327,13 @@ try {
     if ($action === 'update_payment') {
         $paymentId = (int)($_POST['payment_id'] ?? 0);
         $amount = (float)($_POST['amount'] ?? 0);
-        $date = clean($_POST['paid_on'] ?? '');
+        $date = normalize_date(clean($_POST['paid_on'] ?? ''));
         $method = clean($_POST['method'] ?? 'Cash') ?: 'Cash';
         $notes = clean($_POST['notes'] ?? '');
         $pay = $paymentId > 0 ? one("SELECT * FROM pledge_payments WHERE id=$paymentId LIMIT 1") : null;
         if (!$pay) pj(false, 'Payment not found.');
         if ($amount <= 0) pj(false, 'Payment amount must be greater than zero.');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) pj(false, 'Enter a valid payment date.');
+        if ($date === '') pj(false, 'Enter a valid payment date.');
         $pledgeId = (int)$pay['pledge_id'];
         $p = one("SELECT amount_pledged FROM pledges WHERE id=$pledgeId LIMIT 1");
         if (!$p) pj(false, 'Pledge not found.');
