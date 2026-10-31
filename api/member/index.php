@@ -61,10 +61,21 @@ function mapi_action_branding(mysqli $conn): never
     if ($logo !== '' && !preg_match('#^https?://#i', $logo) && defined('BASE_URL')) {
         $logo = rtrim(BASE_URL, '/') . '/' . ltrim($logo, '/');
     }
+    $colors = [];
+    foreach ([
+        'primary' => ['primary_color', '#4a1e8f'],
+        'secondary' => ['secondary_color', '#d4a017'],
+        'background' => ['background_color', '#f3f2f8'],
+        'text' => ['text_color', '#1e1e2d'],
+    ] as $key => [$setting, $default]) {
+        $value = mapi_setting($conn, $setting, $default);
+        $colors[$key] = preg_match('/^#[0-9a-fA-F]{6}$/', $value) ? $value : $default;
+    }
     mapi_ok(['church' => [
         'name' => mapi_setting($conn, 'site_name', APP_NAME),
         'subtitle' => mapi_setting($conn, 'site_subtitle', ''),
         'logo_url' => $logo,
+        'colors' => $colors,
     ]]);
 }
 
