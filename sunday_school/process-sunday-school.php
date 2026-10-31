@@ -165,6 +165,18 @@ function ss_prepare_pupil_data(mysqli $conn, array $src, bool $requireName = tru
     ];
 }
 
+/** Records whether an admin's class choice should override automatic placement (see includes/sunday-school-sync.php). */
+function ss_apply_class_lock(mysqli $conn, int $id, array $d): void
+{
+    require_once __DIR__ . '/../includes/sunday-school-sync.php';
+    if ($id <= 0 || !sunday_school_column_exists($conn, 'sunday_school_pupils', 'class_locked')) return;
+    $locked = sunday_school_lock_for_edit($conn, $d['date_of_birth'], $d['class_id'], (string)$d['status']);
+    $stmt = $conn->prepare('UPDATE sunday_school_pupils SET class_locked = ? WHERE id = ?');
+    $stmt->bind_param('ii', $locked, $id);
+    $stmt->execute();
+    $stmt->close();
+}
+
 function ss_insert_pupil(mysqli $conn, array $d): int
 {
     $stmt = $conn->prepare("
@@ -629,7 +641,7 @@ try {
     /* CREATE PUPIL */
     if ($action === 'create_pupil') {
         $data = ss_prepare_pupil_data($conn, $_POST);
-        ss_insert_pupil($conn, $data);
+        ss_apply_class_lock($conn, ss_insert_pupil($conn, $data), $data);
         ss_json(true, 'Pupil added successfully.');
     }
 
@@ -658,7 +670,7 @@ try {
         $pupilNos = [];
         try {
             foreach ($cleanRows as $row) {
-                ss_insert_pupil($conn, $row);
+                ss_apply_class_lock($conn, ss_insert_pupil($conn, $row), $row);
                 $inserted++;
                 $pupilNos[] = $row['pupil_no'];
             }
@@ -693,6 +705,7 @@ try {
         );
         $stmt->execute();
         $stmt->close();
+        ss_apply_class_lock($conn, $id, $data);
         ss_json(true, 'Pupil updated successfully.');
     }
 

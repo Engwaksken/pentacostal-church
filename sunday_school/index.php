@@ -14,6 +14,10 @@ function ss_count(mysqli $conn, string $sql): int {
     catch (Throwable $e) { return 0; }
 }
 
+/* Enrol child members and place pupils in classes from their dates of birth. */
+require_once '../includes/sunday-school-sync.php';
+$ssSync = sunday_school_auto_sync($conn);
+
 $totalPupils   = ss_count($conn, "SELECT COUNT(*) FROM sunday_school_pupils");
 $activePupils  = ss_count($conn, "SELECT COUNT(*) FROM sunday_school_pupils WHERE COALESCE(status,'Active')='Active'");
 $totalClasses  = ss_count($conn, "SELECT COUNT(*) FROM sunday_school_classes");
@@ -61,6 +65,38 @@ try {
     <button type="button" class="btn btn-secondary" id="btnAddClass"><i class="fas fa-plus"></i> Add Class</button>
   </div>
 </div>
+
+<?php if (!empty($ssSync['ran'])): ?>
+<div class="info-box" style="margin-bottom:16px">
+  <i class="fas fa-birthday-cake"></i>
+  <div>
+    <?php if ($ssSync['min'] === null): ?>
+      <h4>Automatic class placement is off</h4>
+      <p>No class has an age range yet. Give each class an age range such as <strong>3-5 years</strong> and pupils will be placed by date of birth, and child members enrolled automatically.</p>
+    <?php else: ?>
+      <h4>Pupils are placed automatically from date of birth</h4>
+      <p>
+        Members aged <strong><?= (int)$ssSync['min'] ?> to <?= (int)$ssSync['max'] ?></strong> are enrolled as pupils, each pupil is put in the class for their age and moved up as they grow,
+        and pupils older than <?= (int)$ssSync['max'] ?> are marked <strong>Graduated</strong>. Choosing a different class for a pupil keeps them there.
+        <?php
+        $ssNotes = [];
+        if ($ssSync['enrolled'] > 0) $ssNotes[] = (int)$ssSync['enrolled'] . ' child member' . ($ssSync['enrolled'] === 1 ? '' : 's') . ' enrolled';
+        if ($ssSync['linked'] > 0) $ssNotes[] = (int)$ssSync['linked'] . ' existing pupil' . ($ssSync['linked'] === 1 ? '' : 's') . ' linked to their member record';
+        if ($ssSync['moved'] > 0) $ssNotes[] = (int)$ssSync['moved'] . ' moved to the class for their age';
+        if ($ssSync['graduated'] > 0) $ssNotes[] = (int)$ssSync['graduated'] . ' graduated';
+        if ($ssNotes) echo '<br><strong>Just now:</strong> ' . ss_h(implode(', ', $ssNotes)) . '.';
+        ?>
+        <?php if ($ssSync['gaps']): ?>
+          <br>No class covers age<?= count($ssSync['gaps']) === 1 ? '' : 's' ?> <strong><?= ss_h(implode(', ', $ssSync['gaps'])) ?></strong><?= $ssSync['no_class'] > 0 ? ' (' . (int)$ssSync['no_class'] . ' pupil' . ($ssSync['no_class'] === 1 ? '' : 's') . ' affected)' : '' ?>; add or widen a class to include <?= count($ssSync['gaps']) === 1 ? 'it' : 'them' ?>.
+        <?php endif; ?>
+        <?php if ($ssSync['no_dob'] > 0): ?>
+          <br><?= (int)$ssSync['no_dob'] ?> active pupil<?= $ssSync['no_dob'] === 1 ? ' has' : 's have' ?> no date of birth and cannot be placed automatically.
+        <?php endif; ?>
+      </p>
+    <?php endif; ?>
+  </div>
+</div>
+<?php endif; ?>
 
 <div class="ss-stats-grid">
   <div class="ss-stat-card"><div class="ss-stat-icon"><i class="fas fa-users"></i></div><div><div class="ss-stat-value" id="statTotalPupils"><?= (int)$totalPupils ?></div><div class="ss-stat-label">Total Pupils</div></div></div>
