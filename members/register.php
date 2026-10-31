@@ -101,12 +101,11 @@ function sr_valid_id(mysqli $conn,string $table,int $id): ?int {
     $stmt->bind_param('i',$id); $stmt->execute(); $ok=(bool)$stmt->get_result()->fetch_row(); $stmt->close();
     return $ok?$id:null;
 }
+/** Same rule as members/process-member.php: MEM-#### with no year, one after the highest number in use. */
 function sr_generate_member_no(mysqli $conn): string {
-    $prefix='MEM-'.date('Y').'-';
-    $stmt=$conn->prepare("SELECT member_no FROM members WHERE member_no LIKE CONCAT(?,'%') ORDER BY member_no DESC LIMIT 1");
-    $stmt->bind_param('s',$prefix); $stmt->execute(); $row=$stmt->get_result()->fetch_assoc(); $stmt->close();
-    $next=1;
-    if(!empty($row['member_no'])) { $parts=explode('-',(string)$row['member_no']); $next=max(1,((int)end($parts))+1); }
+    $prefix='MEM-';
+    $res=$conn->query("SELECT MAX(CAST(SUBSTRING_INDEX(member_no, '-', -1) AS UNSIGNED)) AS last_no FROM members WHERE member_no LIKE 'MEM-%'");
+    $next=($res ? (int)($res->fetch_assoc()['last_no'] ?? 0) : 0) + 1;
     do {
         $candidate=$prefix.str_pad((string)$next,4,'0',STR_PAD_LEFT);
         $st=$conn->prepare('SELECT id FROM members WHERE member_no=? LIMIT 1'); $st->bind_param('s',$candidate); $st->execute();
