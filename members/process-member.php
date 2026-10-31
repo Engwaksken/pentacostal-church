@@ -123,20 +123,6 @@ function valid_id_or_null(mysqli $conn, string $table, int $id): ?int
     return $found ? $id : null;
 }
 
-function zone_table(mysqli $conn): ?string
-{
-    if (table_exists($conn, 'church_zones')) return 'church_zones';
-    if (table_exists($conn, 'zones'))        return 'zones';
-    return null;
-}
-
-function zone_name_column(mysqli $conn, string $table): string
-{
-    foreach (['zone_name','name','title'] as $col)
-        if (column_exists($conn, $table, $col)) return $col;
-    return 'id';
-}
-
 /**
  * The next member number, MEM-0001, MEM-0002 ... with no year: one after the highest number in use.
  * The highest is read from the last part of every MEM-... number, so older MEM-<year>-#### numbers count too.
@@ -209,24 +195,14 @@ function department_name(mysqli $conn, ?int $deptId): string
 
 function get_member(mysqli $conn, int $id): ?array
 {
-    $zoneJoin   = '';
-    $zoneSelect = "'' AS zone_name";
-    $zt         = zone_table($conn);
-    if ($zt && column_exists($conn, 'members', 'church_zone_id')) {
-        $zn         = zone_name_column($conn, $zt);
-        $zoneSelect = "COALESCE(z.`$zn`,'') AS zone_name";
-        $zoneJoin   = " LEFT JOIN `$zt` z ON z.id=m.church_zone_id ";
-    }
     $sql = "
         SELECT m.*, d.name AS dept_name, dm.role AS dept_role,
                DATE_FORMAT(m.date_of_birth,'%d %b %Y') AS date_of_birth_formatted,
                DATE_FORMAT(m.joined_date,  '%d %b %Y') AS joined_date_formatted,
-               DATE_FORMAT(m.baptism_date, '%d %b %Y') AS baptism_date_formatted,
-               $zoneSelect
+               DATE_FORMAT(m.baptism_date, '%d %b %Y') AS baptism_date_formatted
         FROM members m
         LEFT JOIN departments d ON d.id=m.dept_id
         LEFT JOIN department_members dm ON dm.member_id=m.id AND dm.dept_id=m.dept_id
-        $zoneJoin
         WHERE m.id=? LIMIT 1";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $id); $stmt->execute();
@@ -283,11 +259,6 @@ function insert_member(mysqli $conn, array $data): array
 
     $deptId    = valid_id_or_null($conn, 'departments', (int)($data['dept_id']        ?? 0));
     $department= department_name($conn, $deptId);
-    $churchZoneId = null;
-    $zt        = zone_table($conn);
-    if ($zt && column_exists($conn, 'members', 'church_zone_id')) {
-        $churchZoneId = valid_id_or_null($conn, $zt, (int)($data['church_zone_id'] ?? 0));
-    }
 
     if ($memberNo === '') $memberNo = generate_member_no($conn);
 
@@ -304,30 +275,16 @@ function insert_member(mysqli $conn, array $data): array
     $login = create_member_login($conn,$fullName,$memberNo,$email,$phone,$status,$data);
     $userId = (int)$login['user_id'];
 
-    if (column_exists($conn, 'members', 'church_zone_id')) {
-        $stmt = $conn->prepare("
-            INSERT INTO members
-                (user_id,member_no,full_name,gender,date_of_birth,phone,email,address,
-                 marital_status,occupation,department,dept_id,church_zone_id,joined_date,
-                 baptism_date,status,notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ");
-        $stmt->bind_param('issssssssssiissss',
-            $userId,$memberNo,$fullName,$gender,$dobParam,$phone,$email,$address,
-            $marital,$occupation,$department,$deptId,$churchZoneId,$joinedDate,$baptismParam,$status,$notes
-        );
-    } else {
-        $stmt = $conn->prepare("
-            INSERT INTO members
-                (user_id,member_no,full_name,gender,date_of_birth,phone,email,address,
-                 marital_status,occupation,department,dept_id,joined_date,baptism_date,status,notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ");
-        $stmt->bind_param('issssssssssissss',
-            $userId,$memberNo,$fullName,$gender,$dobParam,$phone,$email,$address,
-            $marital,$occupation,$department,$deptId,$joinedDate,$baptismParam,$status,$notes
-        );
-    }
+    $stmt = $conn->prepare("
+        INSERT INTO members
+            (user_id,member_no,full_name,gender,date_of_birth,phone,email,address,
+             marital_status,occupation,department,dept_id,joined_date,baptism_date,status,notes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ");
+    $stmt->bind_param('issssssssssissss',
+        $userId,$memberNo,$fullName,$gender,$dobParam,$phone,$email,$address,
+        $marital,$occupation,$department,$deptId,$joinedDate,$baptismParam,$status,$notes
+    );
 
     if (!$stmt->execute()) throw new Exception($stmt->error);
     $newId = (int)$conn->insert_id;
@@ -349,18 +306,10 @@ function insert_member(mysqli $conn, array $data): array
 /**
  * Fetch all members matching optional search/status filters (no pagination).
  */
-function fetch_all_members(mysqli $conn, string $search = '', string $status = '', string $dateFrom = '', string $dateTo = '', int $zoneId = 0, string $service = ''): array
+function fetch_all_members(mysqli $conn, string $search = '', string $status = '', string $dateFrom = '', string $dateTo = '', string $service = ''): array
 {
     $hasExtras = member_fields_ensure($conn);
     $extraSelect = $hasExtras ? 'm.pledge_no, m.service_attended,' : "'' AS pledge_no, '' AS service_attended,";
-    $zt = zone_table($conn);
-    $zoneSelect = "'' AS zone_name";
-    $zoneJoin   = '';
-    if ($zt && column_exists($conn, 'members', 'church_zone_id')) {
-        $zn         = zone_name_column($conn, $zt);
-        $zoneSelect = "COALESCE(z.`$zn`,'') AS zone_name";
-        $zoneJoin   = " LEFT JOIN `$zt` z ON z.id=m.church_zone_id ";
-    }
 
     $where  = 'WHERE 1=1';
     $params = [];
@@ -376,11 +325,6 @@ function fetch_all_members(mysqli $conn, string $search = '', string $status = '
             $where .= ' OR m.pledge_no LIKE ? OR m.service_attended LIKE ?';
             $params[] = $like; $params[] = $like; $types .= 'ss';
         }
-        if ($zt && column_exists($conn, 'members', 'church_zone_id')) {
-            $zn2 = zone_name_column($conn, $zt);
-            $where .= " OR z.`$zn2` LIKE ?";
-            $params[] = $like; $types .= 's';
-        }
         $where .= ')';
     }
     if ($status !== '' && in_array($status, ['Active','Inactive'], true)) {
@@ -395,10 +339,6 @@ function fetch_all_members(mysqli $conn, string $search = '', string $status = '
         $where .= ' AND DATE(m.joined_date)<=?';
         $params[] = $dateTo; $types .= 's';
     }
-    if ($zoneId > 0 && $zt && column_exists($conn, 'members', 'church_zone_id')) {
-        $where .= ' AND m.church_zone_id=?';
-        $params[] = $zoneId; $types .= 'i';
-    }
     if ($service !== '' && $hasExtras) {
         $where .= ' AND m.service_attended=?';
         $params[] = $service; $types .= 's';
@@ -409,11 +349,9 @@ function fetch_all_members(mysqli $conn, string $search = '', string $status = '
                m.date_of_birth, m.phone, m.email, m.address,
                m.marital_status, m.occupation,
                COALESCE(d.name, m.department, '') AS dept_name,
-               m.joined_date, m.baptism_date, m.status, m.notes,
-               $zoneSelect
+               m.joined_date, m.baptism_date, m.status, m.notes
         FROM members m
         LEFT JOIN departments d ON d.id=m.dept_id
-        $zoneJoin
         $where
         ORDER BY m.full_name ASC";
 
@@ -438,7 +376,7 @@ function build_csv_rows(array $members): array
     $rows[] = [
         'Member No', 'Pledge No', 'Full Name', 'Gender',
         'Date of Birth', 'Phone', 'Email', 'Address',
-        'Marital Status', 'Occupation', 'Department', 'Zone', 'Service Attended',
+        'Marital Status', 'Occupation', 'Department', 'Service Attended',
         'Joined Date', 'Baptism Date', 'Status', 'Notes',
     ];
     foreach ($members as $m) {
@@ -454,7 +392,6 @@ function build_csv_rows(array $members): array
             $m['marital_status']?? '',
             $m['occupation']   ?? '',
             $m['dept_name']    ?? '',
-            $m['zone_name']    ?? '',
             $m['service_attended'] ?? '',
             $m['joined_date']  ?? '',
             $m['baptism_date'] ?? '',
@@ -488,7 +425,6 @@ function build_pdf_html(array $members, string $search, string $status): string
             <td>' . htmlspecialchars((string)(($m['pledge_no']??'') ?: '-'), ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars((string)($m['gender']??'-'), ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars((string)($m['dept_name']??'-'), ENT_QUOTES) . '</td>
-            <td>' . htmlspecialchars((string)($m['zone_name']??'-'), ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars((string)(($m['service_attended']??'') ?: '-'), ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars((string)($m['phone']??'-'), ENT_QUOTES) . '</td>
             <td>' . htmlspecialchars((string)($m['occupation']??'-'), ENT_QUOTES) . '</td>
@@ -528,7 +464,6 @@ function build_pdf_html(array $members, string $search, string $status): string
       <th>Pledge No</th>
       <th>Gender</th>
       <th>Department</th>
-      <th>Zone</th>
       <th>Service</th>
       <th>Phone</th>
       <th>Occupation</th>
@@ -769,11 +704,10 @@ try {
         $status   = clean_value($_GET['status'] ?? '');
         $dateFrom = clean_value($_GET['date_from'] ?? '');
         $dateTo   = clean_value($_GET['date_to'] ?? '');
-        $zoneId   = max(0, (int)($_GET['zone_id'] ?? 0));
         $service  = clean_value($_GET['service'] ?? '');
         if (!in_array($status, ['Active','Inactive',''], true)) $status = '';
 
-        $members  = fetch_all_members($conn, $search, $status, $dateFrom, $dateTo, $zoneId, $service);
+        $members  = fetch_all_members($conn, $search, $status, $dateFrom, $dateTo, $service);
         $csvRows  = build_csv_rows($members);
         $filename = 'members_export_' . date('Ymd_His') . '.csv';
         csv_out($filename, $csvRows);
@@ -787,11 +721,10 @@ try {
         $status   = clean_value($_GET['status'] ?? '');
         $dateFrom = clean_value($_GET['date_from'] ?? '');
         $dateTo   = clean_value($_GET['date_to'] ?? '');
-        $zoneId   = max(0, (int)($_GET['zone_id'] ?? 0));
         $service  = clean_value($_GET['service'] ?? '');
         if (!in_array($status, ['Active','Inactive',''], true)) $status = '';
 
-        $members  = fetch_all_members($conn, $search, $status, $dateFrom, $dateTo, $zoneId, $service);
+        $members  = fetch_all_members($conn, $search, $status, $dateFrom, $dateTo, $service);
         $html     = build_pdf_html($members, $search, $status);
         $filename = 'members_report_' . date('Ymd_His') . '.pdf';
         pdf_out($filename, $html);
@@ -1032,10 +965,6 @@ try {
 
         $deptId    = valid_id_or_null($conn, 'departments', (int)($_POST['dept_id'] ?? 0));
         $department= department_name($conn, $deptId);
-        $churchZoneId = null;
-        $zt        = zone_table($conn);
-        if ($zt && column_exists($conn, 'members', 'church_zone_id'))
-            $churchZoneId = valid_id_or_null($conn, $zt, (int)($_POST['church_zone_id'] ?? 0));
 
         if ($memberNo === '') $memberNo = generate_member_no($conn);
         if (member_no_exists($conn, $memberNo, $id))
@@ -1047,30 +976,16 @@ try {
         $dobParam     = $dob         !== '' ? $dob         : null;
         $baptismParam = $baptismDate !== '' ? $baptismDate : null;
 
-        if (column_exists($conn, 'members', 'church_zone_id')) {
-            $stmt = $conn->prepare("
-                UPDATE members SET
-                    member_no=?,full_name=?,gender=?,date_of_birth=?,
-                    phone=?,email=?,address=?,marital_status=?,occupation=?,
-                    department=?,dept_id=?,church_zone_id=?,joined_date=?,baptism_date=?,
-                    status=?,notes=?
-                WHERE id=?");
-            $stmt->bind_param('ssssssssssiissssi',
-                $memberNo,$fullName,$gender,$dobParam,$phone,$email,$address,
-                $marital,$occupation,$department,$deptId,$churchZoneId,$joinedDate,$baptismParam,$status,$notes,$id
-            );
-        } else {
-            $stmt = $conn->prepare("
-                UPDATE members SET
-                    member_no=?,full_name=?,gender=?,date_of_birth=?,
-                    phone=?,email=?,address=?,marital_status=?,occupation=?,
-                    department=?,dept_id=?,joined_date=?,baptism_date=?,status=?,notes=?
-                WHERE id=?");
-            $stmt->bind_param('ssssssssssissssi',
-                $memberNo,$fullName,$gender,$dobParam,$phone,$email,$address,
-                $marital,$occupation,$department,$deptId,$joinedDate,$baptismParam,$status,$notes,$id
-            );
-        }
+        $stmt = $conn->prepare("
+            UPDATE members SET
+                member_no=?,full_name=?,gender=?,date_of_birth=?,
+                phone=?,email=?,address=?,marital_status=?,occupation=?,
+                department=?,dept_id=?,joined_date=?,baptism_date=?,status=?,notes=?
+            WHERE id=?");
+        $stmt->bind_param('ssssssssssissssi',
+            $memberNo,$fullName,$gender,$dobParam,$phone,$email,$address,
+            $marital,$occupation,$department,$deptId,$joinedDate,$baptismParam,$status,$notes,$id
+        );
         if (!$stmt->execute()) throw new Exception($stmt->error);
         $stmt->close();
 

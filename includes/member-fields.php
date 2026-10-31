@@ -34,7 +34,7 @@ function member_fields_ensure(mysqli $conn): bool
     $defs = [
         'pledge_no'        => "ALTER TABLE members ADD COLUMN pledge_no VARCHAR(50) NULL AFTER member_no",
         'service_attended' => "ALTER TABLE members ADD COLUMN service_attended VARCHAR(120) NULL"
-            . (member_fields_column_exists($conn, 'members', 'church_zone_id') ? ' AFTER church_zone_id' : ''),
+            . (member_fields_column_exists($conn, 'members', 'baptism_date') ? ' AFTER baptism_date' : ''),
     ];
     foreach ($defs as $col => $sql) {
         if (member_fields_column_exists($conn, 'members', $col)) continue;

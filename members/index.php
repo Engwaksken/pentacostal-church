@@ -42,37 +42,16 @@ function member_col_exists(mysqli $conn, string $table, string $col): bool {
     $row=$stmt->get_result()->fetch_assoc(); $stmt->close();
     return $cache[$key]=((int)($row['c']??0)>0);
 }
-function member_zone_table(mysqli $conn): ?string {
-    foreach(['church_zones','zones'] as $t) if(member_table_exists($conn,$t)) return $t;
-    return null;
-}
-function member_zone_name_col(mysqli $conn, string $table): string {
-    foreach(['zone_name','name','title'] as $c) if(member_col_exists($conn,$table,$c)) return $c;
-    return 'id';
-}
-function member_ensure_zone_col(mysqli $conn): bool {
-    if(!member_col_exists($conn,'members','church_zone_id')) {
-        try { $conn->query("ALTER TABLE members ADD COLUMN church_zone_id INT NULL AFTER baptism_date"); }
-        catch(Throwable $e){ error_log('Could not add church_zone_id: '.$e->getMessage()); }
-    }
-    return member_col_exists($conn,'members','church_zone_id');
-}
 
-$hasZoneCol    = member_ensure_zone_col($conn);
 $hasExtraCols  = member_fields_ensure($conn);
 $extraSelectSql= $hasExtraCols ? ", m.pledge_no, m.service_attended" : ", '' AS pledge_no, '' AS service_attended";
 $serviceOptions= member_fields_service_options($conn);
-$zoneTable     = member_zone_table($conn);
-$zoneNameCol   = $zoneTable ? member_zone_name_col($conn,$zoneTable) : '';
-$zoneSelectSql = ($hasZoneCol&&$zoneTable) ? ", m.church_zone_id, COALESCE(z.`$zoneNameCol`,'') AS zone_name" : ", NULL AS church_zone_id, '' AS zone_name";
-$zoneJoinSql   = ($hasZoneCol&&$zoneTable) ? " LEFT JOIN `$zoneTable` z ON z.id=m.church_zone_id " : '';
 
 /* -- filters / pagination -- */
 $search  = trim((string)($_GET['search']??''));
 $status  = trim((string)($_GET['status']??''));
 $dateFrom = trim((string)($_GET['date_from']??''));
 $dateTo   = trim((string)($_GET['date_to']??''));
-$zoneId   = max(0,(int)($_GET['zone_id']??0));
 $service  = trim((string)($_GET['service']??''));
 $page    = max(1,(int)($_GET['page']??1));
 $pp      = [10,25,50,100];
@@ -89,7 +68,6 @@ if($search!==''){
     $like='%'.$search.'%';
     for($i=0;$i<7;$i++){$baseParams[]=$like;$baseTypes.='s';}
     if($hasExtraCols){$baseWhere.=" OR m.pledge_no LIKE ? OR m.service_attended LIKE ?";$baseParams[]=$like;$baseParams[]=$like;$baseTypes.='ss';}
-    if($hasZoneCol&&$zoneTable){$baseWhere.=" OR z.`$zoneNameCol` LIKE ?";$baseParams[]=$like;$baseTypes.='s';}
     $baseWhere.=")";
 }
 if($status!==''){$baseWhere.=' AND m.status=?';$baseParams[]=$status;$baseTypes.='s';}
@@ -97,12 +75,9 @@ if($dateFrom!==''){$baseWhere.=' AND DATE(m.joined_date)>=?';$baseParams[]=$date
 if($dateTo!==''){$baseWhere.=' AND DATE(m.joined_date)<=?';$baseParams[]=$dateTo;$baseTypes.='s';}
 if($service!=='' && $hasExtraCols){$baseWhere.=' AND m.service_attended=?';$baseParams[]=$service;$baseTypes.='s';}
 
-/* The full filter includes the selected zone. The base filter is reused to
-   calculate each zone's count without limiting every card to one zone. */
 $where=$baseWhere; $params=$baseParams; $types=$baseTypes;
-if($zoneId>0 && $hasZoneCol){$where.=' AND m.church_zone_id=?';$params[]=$zoneId;$types.='i';}
 
-$countStmt=$conn->prepare("SELECT COUNT(*) AS total FROM members m LEFT JOIN departments d ON d.id=m.dept_id $zoneJoinSql $where");
+$countStmt=$conn->prepare("SELECT COUNT(*) AS total FROM members m LEFT JOIN departments d ON d.id=m.dept_id $where");
 bindParams($countStmt,$types,$params); $countStmt->execute();
 $totalRows=(int)($countStmt->get_result()->fetch_assoc()['total']??0); $countStmt->close();
 $totalPages=max(1,(int)ceil($totalRows/$perPage));
@@ -115,10 +90,8 @@ $listSql="
            m.dept_id,m.joined_date,m.baptism_date,m.status,m.photo,m.notes,m.created_at,
            COALESCE(d.name,m.department,'') AS dept_name
            $extraSelectSql
-           $zoneSelectSql
     FROM members m
     LEFT JOIN departments d ON d.id=m.dept_id
-    $zoneJoinSql
     $where
     ORDER BY m.id DESC LIMIT ? OFFSET ?";
 $lp=$params; $lt=$types.'ii'; $lp[]=$perPage; $lp[]=$offset;
@@ -132,7 +105,6 @@ $summarySql="SELECT COUNT(*) total,
                     COALESCE(SUM(YEARWEEK(m.joined_date,1)=YEARWEEK(CURDATE(),1)),0) week
              FROM members m
              LEFT JOIN departments d ON d.id=m.dept_id
-             $zoneJoinSql
              $where";
 $summaryParams=$params;
 $summaryStmt=$conn->prepare($summarySql);
@@ -143,44 +115,16 @@ $summaryStmt->close();
 foreach($summary as $k=>$v) $summary[$k]=(int)($sr[$k]??0);
 $activeMembers=$summary['active'];
 
-$zoneStats=[];
-if($hasZoneCol&&$zoneTable){
-    /* Counts per zone respect search, status and date range, but intentionally
-       ignore the currently selected zone so users can switch zones directly. */
-    $zStatSql="SELECT z.id, z.`$zoneNameCol` zone_name, COUNT(m.id) total
-               FROM `$zoneTable` z
-               LEFT JOIN members m ON m.church_zone_id=z.id
-               LEFT JOIN departments d ON d.id=m.dept_id
-               $baseWhere
-               GROUP BY z.id,z.`$zoneNameCol`
-               ORDER BY z.`$zoneNameCol`";
-    $zoneParams=$baseParams;
-    $zStmt=$conn->prepare($zStatSql);
-    bindParams($zStmt,$baseTypes,$zoneParams);
-    $zStmt->execute();
-    $zr=$zStmt->get_result();
-    while($row=$zr->fetch_assoc()) $zoneStats[]=$row;
-    $zStmt->close();
-}
-
 $departments=[];
 $dR=member_table_exists($conn,'departments')?$conn->query("SELECT id,name FROM departments WHERE COALESCE(status,'Active')='Active' ORDER BY name"):false;
 if($dR) while($r=$dR->fetch_assoc()) $departments[]=$r;
-
-$zones=[];
-if($zoneTable){
-    $sf=member_col_exists($conn,$zoneTable,'status')?" WHERE COALESCE(status,'Active')='Active'":'';
-    $zR=$conn->query("SELECT id,`$zoneNameCol` AS zone_name FROM `$zoneTable` $sf ORDER BY `$zoneNameCol`");
-    if($zR) while($z=$zR->fetch_assoc()) $zones[]=$z;
-}
 
 $startRow=$totalRows>0?$offset+1:0;
 $endRow=min($offset+$perPage,$totalRows);
 
 /* -- JSON blobs for JS -- */
 $deptJson = json_encode(array_map(fn($d)=>['id'=>(int)$d['id'],'name'=>$d['name']],$departments));
-$zoneJson = json_encode(array_map(fn($z)=>['id'=>(int)$z['id'],'name'=>$z['zone_name']],$zones));
-$exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$status,'date_from'=>$dateFrom,'date_to'=>$dateTo,'zone_id'=>$zoneId>0?$zoneId:'','service'=>$service],fn($v)=>$v!==''));
+$exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$status,'date_from'=>$dateFrom,'date_to'=>$dateTo,'service'=>$service],fn($v)=>$v!==''));
 ?>
 
 <div class="main-content">
@@ -192,7 +136,7 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
     <div class="module-page-header">
         <div class="module-title">
             <h2><i class="fas fa-users"></i> Church Members</h2>
-            <p>Manage registered church members<?= $zoneId>0 ? ' in the selected zone' : ' across all zones' ?>.</p>
+            <p>Manage registered church members.</p>
         </div>
         <div class="module-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <!-- Export buttons -->
@@ -232,10 +176,6 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
     .member-stat-card{background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:14px;padding:18px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 18px rgba(15,23,42,.05)}
     .member-stat-icon{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:rgba(46,49,146,.1);color:#2e3192;font-size:20px}
     .member-stat-card strong{display:block;font-size:25px;line-height:1.1;color:#172033}.member-stat-card span{font-size:13px;color:#6b7280}
-    .zone-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:0 0 16px}
-    .zone-stat{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:12px;text-decoration:none;color:inherit}
-    .zone-stat.active,.zone-stat:hover{border-color:#2e3192;background:rgba(46,49,146,.04)}
-    .zone-stat b{font-size:18px;color:#2e3192}.zone-stat small{display:block;color:#6b7280;margin-top:2px}
     @media(max-width:1100px){.member-stats-grid{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:620px){.member-stats-grid{grid-template-columns:1fr}#memberRegistrationLinkModal .form-grid{grid-template-columns:1fr!important}#memberRegistrationLinkModal .modal-body>div[style*="grid-template-columns:minmax"]{grid-template-columns:1fr!important}}
     </style>
@@ -246,19 +186,6 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
         <div class="member-stat-card"><div class="member-stat-icon"><i class="fas fa-calendar-day"></i></div><div><strong><?= number_format($summary['today']) ?></strong><span>Joined Today</span></div></div>
         <div class="member-stat-card"><div class="member-stat-icon"><i class="fas fa-calendar-week"></i></div><div><strong><?= number_format($summary['week']) ?></strong><span>Joined This Week</span></div></div>
     </div>
-
-    <?php if($zoneStats): ?>
-    <div class="zone-stats">
-        <a class="zone-stat <?= $zoneId===0?'active':'' ?>" href="<?= h(pageUrl(1,['zone_id'=>null])) ?>">
-            <div><strong>All Zones</strong><small>Show every zone</small></div><b><?= number_format(array_sum(array_map(fn($z)=>(int)$z['total'],$zoneStats))) ?></b>
-        </a>
-        <?php foreach($zoneStats as $zs): ?>
-        <a class="zone-stat <?= $zoneId===(int)$zs['id']?'active':'' ?>" href="<?= h(pageUrl(1,['zone_id'=>(int)$zs['id']])) ?>">
-            <div><strong><?= h($zs['zone_name']) ?></strong><small>Church Zone</small></div><b><?= number_format((int)$zs['total']) ?></b>
-        </a>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
 
     <!-- -- Filter toolbar ------------------------------------- -->
     <form method="GET" action="index.php" class="page-toolbar">
@@ -273,12 +200,6 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                 <option value="Active"   <?= $status==='Active'  ?'selected':'' ?>>Active</option>
                 <option value="Inactive" <?= $status==='Inactive'?'selected':'' ?>>Inactive</option>
             </select>
-            <?php if($zones): ?>
-            <select name="zone_id" class="form-control">
-                <option value="">All Zones</option>
-                <?php foreach($zones as $z): ?><option value="<?= (int)$z['id'] ?>" <?= $zoneId===(int)$z['id']?'selected':'' ?>><?= h($z['zone_name']) ?></option><?php endforeach; ?>
-            </select>
-            <?php endif; ?>
             <?php if($hasExtraCols): ?>
             <select name="service" class="form-control">
                 <option value="">All Services</option>
@@ -326,7 +247,6 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                         <th>Pledge No</th>
                         <th>Gender</th>
                         <th>Department</th>
-                        <th>Zone</th>
                         <th>Service</th>
                         <th>Phone</th>
                         <th>Occupation</th>
@@ -354,7 +274,6 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                         <td><?= h(($m['pledge_no']??'')?:'-') ?></td>
                         <td><?= h($m['gender']??'-') ?></td>
                         <td><?= h($m['dept_name']??'-') ?></td>
-                        <td><?= h($m['zone_name']??'-') ?></td>
                         <td><?= h(($m['service_attended']??'')?:'-') ?></td>
                         <td><?= h($m['phone']??'-') ?></td>
                         <td><?= h($m['occupation']??'-') ?></td>
@@ -384,7 +303,7 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                     </tr>
                 <?php endwhile; else: ?>
                     <tr>
-                        <td colspan="13">
+                        <td colspan="12">
                             <div class="empty-state">
                                 <div class="icon"><i class="fas fa-users"></i></div>
                                 <p>No members found.</p>
@@ -514,7 +433,7 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                             <i class="fas fa-sliders-h"></i> Defaults applied to all members below
                             <small class="text-muted" style="font-weight:400;margin-left:6px">(override per-row if needed)</small>
                         </div>
-                        <div class="form-grid" style="grid-template-columns:repeat(5,minmax(0,1fr));gap:12px">
+                        <div class="form-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
                             <div class="form-group" style="margin:0">
                                 <label>Joined Date</label>
                                 <input type="date" id="bulkJoinedDate" class="form-control"
@@ -526,15 +445,6 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                                     <option value="">- None -</option>
                                     <?php foreach($departments as $d): ?>
                                         <option value="<?= (int)$d['id'] ?>"><?= h($d['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin:0">
-                                <label>Church Zone</label>
-                                <select id="bulkZoneId" class="form-control">
-                                    <option value="">- None -</option>
-                                    <?php foreach($zones as $z): ?>
-                                        <option value="<?= (int)$z['id'] ?>"><?= h($z['zone_name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -643,7 +553,6 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                         <div class="form-group"><label>Role in Department</label><input class="form-control" name="dept_role" value="Member"></div>
                         <div class="form-group"><label>Joined Date</label><input type="date" class="form-control" name="joined_date" value="<?= h(date('Y-m-d')) ?>"></div>
                         <div class="form-group"><label>Baptism Date</label><input type="date" class="form-control" name="baptism_date"></div>
-                        <div class="form-group"><label>Church Zone</label><select class="form-control" name="church_zone_id"><option value="">None</option><?php foreach($zones as $z): ?><option value="<?= (int)$z['id'] ?>"><?= h($z['zone_name']) ?></option><?php endforeach; ?></select></div>
                         <div class="form-group"><label>Service Attended</label><input class="form-control" name="service_attended" list="memberServiceOptions" maxlength="120" placeholder="e.g. First Service"></div>
                         <div class="form-group"><label>Status</label><select class="form-control" name="status"><option>Active</option><option>Inactive</option></select></div>
                     </div>
@@ -797,8 +706,7 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
 window.MEMBER_MODULE = {
     processUrl : 'process-member.php',
     today      : '<?= date('Y-m-d') ?>',
-    depts      : <?= $deptJson ?>,
-    zones      : <?= $zoneJson ?>
+    depts      : <?= $deptJson ?>
 };
 
 (function () {
@@ -976,12 +884,6 @@ window.MEMBER_MODULE = {
                 `<option value="${d.id}" ${selected==d.id?'selected':''}>${esc(d.name)}</option>`
             ).join('');
     }
-    function buildZoneOptions(selected='') {
-        return '<option value="">- None -</option>' +
-            cfg.zones.map(z =>
-                `<option value="${z.id}" ${selected==z.id?'selected':''}>${esc(z.name)}</option>`
-            ).join('');
-    }
 
     function createRow(n=1) {
         const idx = ++rowCounter;
@@ -1079,7 +981,6 @@ window.MEMBER_MODULE = {
     document.getElementById('btnApplyDefaults')?.addEventListener('click', () => {
         const joinedDate = document.getElementById('bulkJoinedDate')?.value || cfg.today;
         const deptId     = document.getElementById('bulkDeptId')?.value     || '';
-        const zoneId     = document.getElementById('bulkZoneId')?.value     || '';
         const status     = document.getElementById('bulkStatus')?.value     || 'Active';
         const service    = document.getElementById('bulkService')?.value.trim() || '';
 
@@ -1139,7 +1040,6 @@ window.MEMBER_MODULE = {
 
         const sharedJoined = document.getElementById('bulkJoinedDate')?.value || cfg.today;
         const sharedDept   = document.getElementById('bulkDeptId')?.value     || '';
-        const sharedZone   = document.getElementById('bulkZoneId')?.value     || '';
         const sharedStatus = document.getElementById('bulkStatus')?.value     || 'Active';
         const sharedService= document.getElementById('bulkService')?.value.trim() || '';
 
@@ -1158,7 +1058,6 @@ window.MEMBER_MODULE = {
             fd.append(`members[${i}][status]`,      g('status') || sharedStatus);
             fd.append(`members[${i}][joined_date]`,    sharedJoined);
             fd.append(`members[${i}][dept_id]`,         sharedDept);
-            fd.append(`members[${i}][church_zone_id]`,  sharedZone);
         });
 
         const btn     = document.getElementById('bulkSubmitBtn');
@@ -1201,7 +1100,7 @@ window.MEMBER_MODULE = {
             const m = res.member || {};
             ['member_no','pledge_no','service_attended','full_name','gender','date_of_birth','phone','email','address',
              'marital_status','occupation','dept_id','dept_role','joined_date','baptism_date',
-             'church_zone_id','status','notes'].forEach(k => setVal(k, m[k]));
+             'status','notes'].forEach(k => setVal(k, m[k]));
             setVal('action','update'); setVal('id', m.id || id);
             document.getElementById('memberSubmitBtn').innerHTML =
                 '<i class="fas fa-save"></i> Update Member';
@@ -1270,7 +1169,6 @@ window.MEMBER_MODULE = {
                     ${row('Phone',m.phone)}
                     ${row('Email',m.email)}
                     ${row('Department',m.dept_name||m.department)}
-                    ${row('Church Zone',m.zone_name)}
                     ${row('Role',m.dept_role)}
                     ${row('Occupation',m.occupation)}
                     ${row('Marital Status',m.marital_status)}

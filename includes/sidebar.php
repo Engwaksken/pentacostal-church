@@ -929,20 +929,6 @@ $memberId =
 
         navLink(
             $sidebarBaseUrl .
-            'member/church.php?tab=zones',
-            'fa-map-marker-alt',
-            'Church Zones',
-            $dir,
-            $cur,
-            'church.php',
-            'member.church.view',
-            'tab',
-            'zones'
-        );
-
-
-        navLink(
-            $sidebarBaseUrl .
             'member/church.php?tab=departments',
             'fa-sitemap',
             'Departments',
@@ -1468,18 +1454,6 @@ $memberId =
 
 
         <?php
-
-        navLink(
-            $sidebarBaseUrl .
-            'zones/',
-            'fa-map-marker-alt',
-            'Church Zones',
-            $dir,
-            $cur,
-            'zones',
-            'zones.view'
-        );
-
 
         navLink(
             $sidebarBaseUrl .

@@ -2,7 +2,7 @@
   'use strict';
 
   const deleteControlSelector = [
-    'button[data-action="delete"]', 'button[data-act="delete"]', 'button[data-zone-action="delete"]',
+    'button[data-action="delete"]', 'button[data-act="delete"]',
     'button[data-project-action="delete"]', 'button[data-delete-id]',
     'button[class*="delete-"]',
     'a[href*="delete.php"]', 'form input[name="action"][value^="delete"]'

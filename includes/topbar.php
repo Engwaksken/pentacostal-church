@@ -87,10 +87,6 @@ $directoryTitles = [
      * Groups & Fellowships
      * -------------------------------------------------------- */
 
-    'zones'             => 'Church Zones',
-
-    'church_zones'      => 'Church Zones',
-
     'departments'       => 'Departments',
 
 
@@ -327,8 +323,6 @@ $queryTitles = [
      * -------------------------------------------------------- */
 
     'church.php' => [
-
-        'zones'       => 'Church Zones',
 
         'departments' => 'Departments',
     ],

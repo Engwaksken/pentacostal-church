@@ -86,15 +86,6 @@ function sr_ensure_links_table(mysqli $conn): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     if(!$conn->query($sql)) throw new RuntimeException('Unable to prepare member registration.');
 }
-function sr_zone_table(mysqli $conn): ?string {
-    if(sr_table_exists($conn,'church_zones')) return 'church_zones';
-    if(sr_table_exists($conn,'zones')) return 'zones';
-    return null;
-}
-function sr_zone_name_column(mysqli $conn,string $table): string {
-    foreach(['zone_name','name','title'] as $c) if(sr_column_exists($conn,$table,$c)) return $c;
-    return 'id';
-}
 function sr_valid_id(mysqli $conn,string $table,int $id): ?int {
     if($id<=0 || !sr_table_exists($conn,$table)) return null;
     $stmt=$conn->prepare("SELECT id FROM `$table` WHERE id=? LIMIT 1");
@@ -176,13 +167,6 @@ if(sr_table_exists($conn,'departments')) {
     $r=$conn->query("SELECT id,name FROM departments $where ORDER BY name");
     if($r) while($row=$r->fetch_assoc()) $departments[]=$row;
 }
-$zones=[]; $zoneTable=sr_zone_table($conn);
-if($zoneTable){
-    $nameCol=sr_zone_name_column($conn,$zoneTable);
-    $where=sr_column_exists($conn,$zoneTable,'status')?" WHERE COALESCE(status,'Active')='Active'":'';
-    $r=$conn->query("SELECT id,`$nameCol` zone_name FROM `$zoneTable` $where ORDER BY `$nameCol`");
-    if($r) while($row=$r->fetch_assoc()) $zones[]=$row;
-}
 
 $hasServiceCol=member_fields_ensure($conn);
 $serviceOptions=$hasServiceCol?member_fields_service_options($conn):[];
@@ -207,7 +191,6 @@ if($_SERVER['REQUEST_METHOD']==='POST' && !$invalidInvite){
     $password=(string)($_POST['login_password']??'');
     $confirm=(string)($_POST['confirm_password']??'');
     $deptId=sr_valid_id($conn,'departments',(int)($_POST['dept_id']??0));
-    $zoneId=$zoneTable?sr_valid_id($conn,$zoneTable,(int)($_POST['church_zone_id']??0)):null;
 
     if($fullName==='') $errors[]='Full name is required.';
     if(!in_array($gender,['Male','Female','Other'],true)) $errors[]='Please select a valid gender.';
@@ -249,19 +232,11 @@ if($_SERVER['REQUEST_METHOD']==='POST' && !$invalidInvite){
 
             $joined=date('Y-m-d'); $department=sr_department_name($conn,$deptId); $notes='Self-registered using public member registration link.';
             $dobDb=$dob!==''?$dob:null; $baptismDb=$baptism!==''?$baptism:null;
-            if(sr_column_exists($conn,'members','church_zone_id')){
-                $mst=$conn->prepare("INSERT INTO members
-                    (user_id,member_no,full_name,gender,date_of_birth,phone,email,address,marital_status,occupation,department,dept_id,church_zone_id,joined_date,baptism_date,status,notes)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-                if(!$mst) throw new RuntimeException('Unable to prepare member registration.');
-                $mst->bind_param('issssssssssiissss',$userId,$memberNo,$fullName,$gender,$dobDb,$phone,$email,$address,$marital,$occupation,$department,$deptId,$zoneId,$joined,$baptismDb,$status,$notes);
-            } else {
-                $mst=$conn->prepare("INSERT INTO members
-                    (user_id,member_no,full_name,gender,date_of_birth,phone,email,address,marital_status,occupation,department,dept_id,joined_date,baptism_date,status,notes)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-                if(!$mst) throw new RuntimeException('Unable to prepare member registration.');
-                $mst->bind_param('issssssssssissss',$userId,$memberNo,$fullName,$gender,$dobDb,$phone,$email,$address,$marital,$occupation,$department,$deptId,$joined,$baptismDb,$status,$notes);
-            }
+            $mst=$conn->prepare("INSERT INTO members
+                (user_id,member_no,full_name,gender,date_of_birth,phone,email,address,marital_status,occupation,department,dept_id,joined_date,baptism_date,status,notes)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            if(!$mst) throw new RuntimeException('Unable to prepare member registration.');
+            $mst->bind_param('issssssssssissss',$userId,$memberNo,$fullName,$gender,$dobDb,$phone,$email,$address,$marital,$occupation,$department,$deptId,$joined,$baptismDb,$status,$notes);
             if(!$mst->execute()) throw new RuntimeException('Unable to save your member details: '.$mst->error);
             $memberId=(int)$conn->insert_id; $mst->close();
             if($hasServiceCol && $serviceAttended!==''){
@@ -360,7 +335,6 @@ if($_SERVER['REQUEST_METHOD']==='POST' && !$invalidInvite){
                     <div class="reg-group"><label>Marital Status</label><select name="marital_status"><option value="">Select</option><?php foreach(['Single','Married','Widowed','Divorced','Separated'] as $m): ?><option value="<?= $m ?>" <?= (($_POST['marital_status']??'')===$m)?'selected':'' ?>><?= $m ?></option><?php endforeach; ?></select></div>
                     <div class="reg-group"><label>Occupation</label><input type="text" name="occupation" maxlength="150" value="<?= sr_h($_POST['occupation']??'') ?>"></div>
                     <?php if($departments): ?><div class="reg-group" data-tab="Church"><label>Department</label><select name="dept_id"><option value="">- None -</option><?php foreach($departments as $d): ?><option value="<?= (int)$d['id'] ?>" <?= ((int)($_POST['dept_id']??0)===(int)$d['id'])?'selected':'' ?>><?= sr_h($d['name']) ?></option><?php endforeach; ?></select></div><?php endif; ?>
-                    <?php if($zones): ?><div class="reg-group" data-tab="Church"><label>Church Zone</label><select name="church_zone_id"><option value="">- None -</option><?php foreach($zones as $z): ?><option value="<?= (int)$z['id'] ?>" <?= ((int)($_POST['church_zone_id']??0)===(int)$z['id'])?'selected':'' ?>><?= sr_h($z['zone_name']) ?></option><?php endforeach; ?></select></div><?php endif; ?>
                     <?php if($hasServiceCol): ?><div class="reg-group" data-tab="Church"><label>Service You Attend</label><input type="text" name="service_attended" list="regServiceOptions" maxlength="120" placeholder="e.g. First Service" value="<?= sr_h($_POST['service_attended']??'') ?>"><datalist id="regServiceOptions"><?php foreach($serviceOptions as $so): ?><option value="<?= sr_h($so) ?>"><?php endforeach; ?></datalist></div><?php endif; ?>
                     <div class="reg-group" data-tab="Church"><label>Baptism Date</label><input type="date" name="baptism_date" value="<?= sr_h($_POST['baptism_date']??'') ?>"></div>
                     <div class="reg-group reg-span-2" data-tab="Your Details"><label>Address</label><textarea name="address" rows="2" maxlength="500"><?= sr_h($_POST['address']??'') ?></textarea></div>
