@@ -145,8 +145,8 @@ if (!function_exists('systemEmailTemplate')) {
         return "
         <div style='font-family:Arial,sans-serif;background:{$background};padding:24px;'>
             <div style='max-width:680px;margin:auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;'>
-                <div style='background:{$primary};color:#ffffff;padding:18px 24px;'>
-                    <h2 style='margin:0;font-size:22px;'>{$safeTitle}</h2>
+                <div style='background:#ffffff;padding:18px 24px;border-bottom:3px solid {$primary};'>
+                    <h2 style='margin:0;font-size:22px;color:{$primary};'>{$safeTitle}</h2>
                 </div>
                 <div style='padding:24px;color:{$text};font-size:15px;line-height:1.6;'>
                     {$bodyHtml}
@@ -285,6 +285,6 @@ if (!function_exists('brand_system_email')) {
             if (!preg_match('/^#[0-9a-fA-F]{6}$/', (string)($brand[$key] ?? ''))) $brand[$key] = $fallback;
         }
         $logo = $brand['logo'] !== '' ? '<img src="' . mail_h($brand['logo']) . '" alt="' . $name . '" style="display:block;max-width:160px;max-height:64px;margin:0 auto 12px">' : '';
-        return '<div style="font-family:Arial,sans-serif;background:' . $brand['background'] . ';padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid ' . $brand['secondary'] . ';border-radius:14px;overflow:hidden"><div style="padding:20px 24px;text-align:center;background:' . $brand['primary'] . ';color:#fff">' . $logo . '<strong style="font-size:20px">' . $name . '</strong></div><div style="padding:24px;color:' . $brand['text'] . ';line-height:1.6">' . $html . '</div><div style="padding:14px 24px;background:' . $brand['secondary'] . ';color:' . $brand['text'] . ';text-align:center;font-size:12px">Sent by ' . $name . '</div></div></div>';
+        return '<div style="font-family:Arial,sans-serif;background:' . $brand['background'] . ';padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid ' . $brand['secondary'] . ';border-radius:14px;overflow:hidden"><div style="padding:20px 24px;text-align:center;background:#ffffff;border-bottom:4px solid ' . $brand['primary'] . '">' . $logo . '<strong style="font-size:20px;color:' . $brand['primary'] . '">' . $name . '</strong></div><div style="padding:24px;color:' . $brand['text'] . ';line-height:1.6">' . $html . '</div><div style="padding:14px 24px;background:' . $brand['secondary'] . ';color:' . $brand['text'] . ';text-align:center;font-size:12px">Sent by ' . $name . '</div></div></div>';
     }
 }
