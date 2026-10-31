@@ -36,6 +36,12 @@ try {
         $background=st_color((string)($_POST['background_color']??''),'#f3f2f8');
         $textColor=st_color((string)($_POST['text_color']??''),'#1e1e2d');
         foreach(['primary_color'=>$primary,'secondary_color'=>$secondary,'background_color'=>$background,'text_color'=>$textColor] as $key=>$value) st_save_setting($conn,$key,$value);
+        // The youth age range comes only from the General tab.
+        if(isset($_POST['youth_min_age'],$_POST['youth_max_age'])){
+            $youthMin=(int)$_POST['youth_min_age']; $youthMax=(int)$_POST['youth_max_age'];
+            if($youthMin<1||$youthMax>99||$youthMin>$youthMax) st_json(['success'=>false,'message'=>'Youth ages must be between 1 and 99, and the youngest age cannot be above the oldest.']);
+            st_save_setting($conn,'youth_min_age',(string)$youthMin); st_save_setting($conn,'youth_max_age',(string)$youthMax);
+        }
         // Font settings come only from the Appearance tab; the General tab does not send them, so leave them as they are.
         if(isset($_POST['font_family'])){
             $family=trim((string)$_POST['font_family']); $custom=trim((string)($_POST['font_family_custom']??''));

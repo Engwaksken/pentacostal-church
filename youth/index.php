@@ -45,6 +45,10 @@ $csrfToken  = $_SESSION['csrf_token'] ?? $_SESSION['csrf'] ?? '';
    this script's real location on disk, not the browser's displayed URL. */
 $processEndpoint = yr_script_dir() . '/process-youth.php';
 
+/* Register members in the youth age range and mark youth past it as Aged Out, from their dates of birth. */
+require_once '../includes/youth-sync.php';
+$youthSync = ($hasYouth && $hasMembers) ? youth_auto_sync($conn) : ['ran' => false];
+
 $totalYouth    = $hasYouth ? yr_scalar($conn, "SELECT COUNT(*) FROM youth") : 0;
 $activeYouth   = ($hasYouth && yr_col_exists($conn,'youth','status'))
     ? yr_scalar($conn, "SELECT COUNT(*) FROM youth WHERE COALESCE(status,'Active')='Active'") : $totalYouth;
@@ -109,6 +113,29 @@ if ($hasMembers && $hasYouth) {
             </div>
         <?php else: ?>
 
+        <?php if (!empty($youthSync['ran'])): ?>
+        <div class="info-box" style="margin-bottom:16px">
+            <i class="fa fa-birthday-cake"></i>
+            <div>
+                <h4>Youth are filled in automatically from date of birth</h4>
+                <p>
+                    Members aged <strong><?= (int)$youthSync['min'] ?> to <?= (int)$youthSync['max'] ?></strong> are added to this registry,
+                    and youth older than <?= (int)$youthSync['max'] ?> are marked <strong>Aged Out</strong>. The age range is set in Site Settings &gt; General.
+                    <?php
+                    $syncNotes = [];
+                    if ($youthSync['added'] > 0) $syncNotes[] = (int)$youthSync['added'] . ' newly added';
+                    if ($youthSync['aged_out'] > 0) $syncNotes[] = (int)$youthSync['aged_out'] . ' aged out';
+                    if ($youthSync['restored'] > 0) $syncNotes[] = (int)$youthSync['restored'] . ' back in range';
+                    if ($syncNotes) echo '<br><strong>Just now:</strong> ' . h(implode(', ', $syncNotes)) . '.';
+                    ?>
+                    <?php if ($youthSync['no_dob'] > 0): ?>
+                        <br><?= (int)$youthSync['no_dob'] ?> active member<?= $youthSync['no_dob'] === 1 ? ' has' : 's have' ?> no date of birth, so they cannot be checked; add it on the Members page, or register them here by hand.
+                    <?php endif; ?>
+                </p>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- -- Stats ------------------------------------------ -->
         <div class="stats-grid module-stats-grid">
             <div class="stat-card">
@@ -121,7 +148,7 @@ if ($hasMembers && $hasYouth) {
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background:rgba(108,117,125,.12);color:#6c757d"><i class="fa fa-pause-circle"></i></div>
-                <div class="stat-body"><div class="stat-number" id="yrStatInactive"><?= (int)$inactiveYouth ?></div><div class="stat-label">Inactive Youth</div></div>
+                <div class="stat-body"><div class="stat-number" id="yrStatInactive"><?= (int)$inactiveYouth ?></div><div class="stat-label">Inactive / Aged Out</div></div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background:rgba(23,162,184,.12);color:var(--info)"><i class="fa fa-mars"></i></div>
@@ -348,6 +375,7 @@ if ($hasMembers && $hasYouth) {
                                 <select name="status" id="yrStatus" class="form-control">
                                     <option value="Active">Active</option>
                                     <option value="Inactive">Inactive</option>
+                                    <option value="Aged Out">Aged Out</option>
                                 </select>
                             </div>
 

@@ -116,6 +116,8 @@ $settings = [
     'text_color'       => st_value($conn, 'text_color', '#1e1e2d'),
 ];
 $font = site_font();
+$youthMinAge = (int)st_value($conn, 'youth_min_age', '13');
+$youthMaxAge = (int)st_value($conn, 'youth_max_age', '35');
 $fontOptions = site_font_options();
 $fontSizes = site_font_sizes();
 $fontSizeIsCustom = !isset($fontSizes[$font['size']]);
@@ -447,6 +449,30 @@ $activeTab = in_array($requestedTab, $allowedTabs, true)
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-card-header" style="margin-top:24px">
+                            <div>
+                                <h3>
+                                    <i class="fas fa-user-graduate"></i>
+                                    Youth Age Range
+                                </h3>
+                                <p class="settings-card-subtitle">
+                                    Members whose date of birth puts them in this range are added to the Youth Registry automatically.
+                                    Youth older than the range are marked Aged Out.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="settings-form-grid">
+                            <div class="settings-form-group">
+                                <label for="youthMinAge">Youngest Age (years)</label>
+                                <input type="number" id="youthMinAge" name="youth_min_age" class="form-control" min="1" max="99" step="1" required value="<?= (int)$youthMinAge ?>">
+                            </div>
+                            <div class="settings-form-group">
+                                <label for="youthMaxAge">Oldest Age (years)</label>
+                                <input type="number" id="youthMaxAge" name="youth_max_age" class="form-control" min="1" max="99" step="1" required value="<?= (int)$youthMaxAge ?>">
                             </div>
                         </div>
 

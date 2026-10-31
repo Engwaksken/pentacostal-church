@@ -911,6 +911,23 @@ try {
             'status' => youth_get('status', 'Active') ?: 'Active',
         ];
 
+        if (!in_array($data['status'], ['Active', 'Inactive', 'Aged Out'], true)) {
+            $data['status'] = 'Active';
+        }
+
+        /* Setting someone past the youth age back to Active (e.g. a youth leader) stops the
+           automatic age check from marking them Aged Out again; any other status clears that. */
+        if (youth_col_exists($conn, 'youth', 'age_exempt')) {
+            $data['age_exempt'] = '0';
+            if ($data['status'] === 'Active') {
+                require_once __DIR__ . '/../includes/youth-sync.php';
+                [, $youthMax] = youth_age_range();
+                $dobRow = youth_fetch_one($conn, 'SELECT m.date_of_birth FROM youth y JOIN members m ON m.id = y.member_id WHERE y.id = ? LIMIT 1', 'i', [$id]);
+                $age = youth_age_from_dob($dobRow['date_of_birth'] ?? null);
+                if ($age !== null && $age > $youthMax) $data['age_exempt'] = '1';
+            }
+        }
+
         youth_update_dynamic($conn, 'youth', $data, $id);
 
         youth_json(true, 'Youth updated successfully.');
