@@ -210,7 +210,7 @@ function mn_site_name(mysqli $conn): string
         $row = mn_rows($conn, "SELECT setting_value FROM site_settings WHERE setting_key='site_name' LIMIT 1")[0] ?? null;
         if ($row && trim((string)$row['setting_value']) !== '') return trim((string)$row['setting_value']);
     }
-    return 'Rongoro COU';
+    return defined('APP_NAME') ? APP_NAME : 'Pentecostal Church';
 }
 
 /** Name, phone and email for a member; the login's email when the member record has none. */

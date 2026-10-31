@@ -289,7 +289,7 @@ function mapi_send_reset_code(mysqli $conn, array $contacts, string $code): bool
     foreach (['/../../config/mail-function.php', '/../../config/sms-function.php'] as $helper) {
         if (is_file(__DIR__ . $helper)) require_once __DIR__ . $helper;
     }
-    $site = mapi_setting($conn, 'site_name', 'Rongoro COU');
+    $site = mapi_setting($conn, 'site_name', defined('APP_NAME') ? APP_NAME : 'Pentecostal Church');
     $minutes = MAPI_RESET_CODE_MINUTES;
     $sent = false;
 
