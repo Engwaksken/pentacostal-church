@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../includes/member-content-functions.php';
 require_once __DIR__ . '/_lib.php';
 require_once __DIR__ . '/../../includes/pledge-types.php';
+require_once __DIR__ . '/../../includes/member-notify.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $conn->set_charset('utf8mb4');
@@ -30,6 +31,11 @@ try {
         case 'change_password': mapi_action_change_password($conn); break;
         case 'forgot_password': mapi_action_forgot_password($conn); break;
         case 'reset_password':  mapi_action_reset_password($conn); break;
+        case 'notification_settings':        mapi_action_notification_settings($conn); break;
+        case 'update_notification_settings': mapi_action_update_notification_settings($conn); break;
+        case 'register_device': mapi_action_register_device($conn); break;
+        case 'notifications':   mapi_action_notifications($conn); break;
+        case 'mark_notifications_read': mapi_action_mark_notifications_read($conn); break;
         case 'update_profile':  mapi_action_update_profile($conn); break;
         case 'update_photo':    mapi_action_update_photo($conn); break;
         case 'dashboard':       mapi_action_dashboard($conn); break;
@@ -118,6 +124,8 @@ function mapi_action_logout(mysqli $conn): never
     $stmt->bind_param('i', $auth['token_id']);
     $stmt->execute();
     $stmt->close();
+    // This phone stops getting push notifications.
+    if (mapi_table($conn, 'member_push_devices')) mn_exec($conn, 'DELETE FROM member_push_devices WHERE api_token_id=?', 'i', [$auth['token_id']]);
     mapi_ok(['message' => 'Signed out.']);
 }
 
@@ -277,6 +285,86 @@ function mapi_action_reset_password(mysqli $conn): never
     $stmt->close();
     mapi_clear_failures($conn, $key);
     mapi_ok(['message' => 'Your password was reset. Use it for the app and the website.']);
+}
+
+/* ------------------------------------------------------------------ notifications */
+
+function mapi_require_notifications(mysqli $conn): void
+{
+    if (!mn_ready($conn)) mapi_fail(503, 'Notifications are not set up yet. Please contact the church office.');
+}
+
+/** The member's choices per category, and which channels can reach them. */
+function mapi_action_notification_settings(mysqli $conn): never
+{
+    $auth = mapi_auth($conn);
+    mapi_require_notifications($conn);
+    $prefs = mn_prefs($conn, $auth['member_id']);
+    $categories = [];
+    foreach (mn_categories() as $key => $c) {
+        $categories[] = ['key' => $key, 'label' => $c['label'], 'description' => $c['description']] + $prefs[$key];
+    }
+    $contact = mn_contact($conn, $auth['member_id']);
+    mapi_ok([
+        'categories' => $categories,
+        'channels' => [
+            'push' => ['available' => mn_push_configured(), 'note' => mn_push_configured() ? null : 'Push notifications are not switched on by the church yet.'],
+            'email' => ['available' => $contact['email'] !== '', 'note' => $contact['email'] !== '' ? $contact['email'] : 'Add an email address to your profile to get emails.'],
+            'sms' => ['available' => $contact['phone'] !== '' && mn_sms_configured($conn), 'note' => $contact['phone'] === '' ? 'Add a phone number to your profile to get SMS.' : (mn_sms_configured($conn) ? $contact['phone'] : 'SMS is not switched on by the church yet.')],
+        ],
+    ]);
+}
+
+function mapi_action_update_notification_settings(mysqli $conn): never
+{
+    mapi_require_method('POST');
+    $auth = mapi_auth($conn);
+    mapi_require_notifications($conn);
+    $settings = mapi_input()['settings'] ?? null;
+    if (!is_array($settings)) mapi_fail(422, 'No settings were sent.');
+    mn_save_prefs($conn, $auth['member_id'], $settings);
+    mapi_ok(['message' => 'Your notification settings were saved.']);
+}
+
+/** Saves this phone's push token so it can receive notifications while signed in. */
+function mapi_action_register_device(mysqli $conn): never
+{
+    mapi_require_method('POST');
+    $auth = mapi_auth($conn);
+    mapi_require_notifications($conn);
+    $input = mapi_input();
+    $token = mapi_str($input, 'fcm_token', 255);
+    $platform = mapi_str($input, 'platform', 20);
+    if ($token === '' || !preg_match('/^[A-Za-z0-9_:\-]+$/', $token)) mapi_fail(422, 'Invalid push token.');
+    mn_exec($conn, 'INSERT INTO member_push_devices (member_id, user_id, api_token_id, fcm_token, platform, last_seen_at) VALUES (?,?,?,?,?,NOW())
+        ON DUPLICATE KEY UPDATE member_id=VALUES(member_id), user_id=VALUES(user_id), api_token_id=VALUES(api_token_id), platform=VALUES(platform), last_seen_at=NOW()',
+        'iiiss', [$auth['member_id'], $auth['user_id'], $auth['token_id'], $token, $platform]);
+    mapi_ok(['message' => 'This phone will get push notifications.']);
+}
+
+/** The member's latest notifications, newest first. */
+function mapi_action_notifications(mysqli $conn): never
+{
+    $auth = mapi_auth($conn);
+    mapi_require_notifications($conn);
+    $items = mapi_rows($conn, 'SELECT id, category, title, body, created_at, read_at FROM member_notifications
+        WHERE member_id=? ORDER BY id DESC LIMIT 100', 'i', [$auth['member_id']]);
+    $unread = 0;
+    foreach ($items as &$n) {
+        $n['id'] = (int)$n['id'];
+        if ($n['read_at'] === null) $unread++;
+    }
+    unset($n);
+    mapi_ok(['items' => $items, 'unread' => $unread]);
+}
+
+function mapi_action_mark_notifications_read(mysqli $conn): never
+{
+    mapi_require_method('POST');
+    $auth = mapi_auth($conn);
+    mapi_require_notifications($conn);
+    mn_exec($conn, 'UPDATE member_notifications SET read_at=NOW() WHERE member_id=? AND read_at IS NULL', 'i', [$auth['member_id']]);
+    mapi_ok(['message' => 'Marked as read.']);
 }
 
 /** Contact details and service attendance, with the same rules as the web portal (member/profile.php). */

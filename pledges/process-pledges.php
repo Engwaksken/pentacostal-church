@@ -11,6 +11,8 @@ $mailFile = __DIR__ . '/../config/mail-function.php';
 if (is_file($mailFile)) { require_once $mailFile; }
 $smsFile = __DIR__ . '/../config/sms-function.php';
 if (is_file($smsFile)) { require_once $smsFile; }
+$notifyFile = __DIR__ . '/../includes/member-notify.php';
+if (is_file($notifyFile)) { require_once $notifyFile; }
 
 if (!isset($conn) || !($conn instanceof mysqli)) {
     echo json_encode(['success' => false, 'message' => 'Database connection not found.']);
@@ -128,20 +130,31 @@ function send_pledge_receipt_email(int $paymentId): bool {
     $text = "Dear {$name},\nThank you for your pledge payment.\nReceipt No: {$payment['receipt_no']}\nAmount: {$amount}\n";
     return sendSystemEmail($conn, (string)$payment['email'], $name, 'Pledge Payment Receipt - '.$payment['receipt_no'], $html, $text);
 }
+/** Whether a member wants this channel for a notification category (member app settings); yes when settings are not set up. */
+function pledge_member_wants(?int $memberId, string $category, string $channel): bool {
+    global $conn;
+    if (!$memberId || !function_exists('mn_ready') || !mn_ready($conn)) return true;
+    return mn_prefs($conn, $memberId)[$category][$channel] ?? true;
+}
 function send_pledge_reminder(array $pledge): array {
     global $conn;
+    $memberId = (int)($pledge['member_id'] ?? 0) ?: null;
     $name = member_name($pledge);
     $balance = max(0, (float)$pledge['amount_pledged'] - (float)$pledge['amount_paid']);
     $purpose = pledge_purpose($pledge);
     $msg = "Dear {$name}, this is a reminder for your unpaid pledge {$pledge['pledge_no']} ({$purpose}). Balance: UGX " . number_format($balance) . ". Thank you.";
     $emailSent = false;
     $smsSent = false;
-    if (!empty($pledge['email']) && filter_var($pledge['email'], FILTER_VALIDATE_EMAIL) && function_exists('sendSystemEmail')) {
+    if (!empty($pledge['email']) && filter_var($pledge['email'], FILTER_VALIDATE_EMAIL) && function_exists('sendSystemEmail') && pledge_member_wants($memberId, 'reminders', 'email')) {
         $html = "<div style='font-family:Arial,sans-serif;background:#f6f7fb;padding:20px'><div style='max-width:650px;margin:auto;background:#fff;border-radius:12px;padding:22px;border:1px solid #e5e7eb'><h2 style='color:#4a1e8f'>Pledge Reminder</h2><p>Dear <strong>".htmlspecialchars($name, ENT_QUOTES, 'UTF-8')."</strong>,</p><p>This is a kind reminder about your unpaid pledge.</p><table style='width:100%;border-collapse:collapse'><tr><td style='border:1px solid #e5e7eb;padding:9px'><b>Pledge No</b></td><td style='border:1px solid #e5e7eb;padding:9px'>".htmlspecialchars((string)$pledge['pledge_no'], ENT_QUOTES, 'UTF-8')."</td></tr><tr><td style='border:1px solid #e5e7eb;padding:9px'><b>Purpose</b></td><td style='border:1px solid #e5e7eb;padding:9px'>".htmlspecialchars($purpose, ENT_QUOTES, 'UTF-8')."</td></tr><tr><td style='border:1px solid #e5e7eb;padding:9px'><b>Balance</b></td><td style='border:1px solid #e5e7eb;padding:9px'><b>UGX ".number_format($balance)."</b></td></tr><tr><td style='border:1px solid #e5e7eb;padding:9px'><b>Due Date</b></td><td style='border:1px solid #e5e7eb;padding:9px'>".htmlspecialchars((string)($pledge['due_date'] ?: 'Not specified'), ENT_QUOTES, 'UTF-8')."</td></tr></table><p>Thank you.</p></div></div>";
         $emailSent = sendSystemEmail($conn, (string)$pledge['email'], $name, 'Weekly Pledge Reminder - '.$pledge['pledge_no'], $html, $msg);
     }
-    if (!empty($pledge['phone']) && function_exists('sendSms')) {
+    if (!empty($pledge['phone']) && function_exists('sendSms') && pledge_member_wants($memberId, 'reminders', 'sms')) {
         $smsSent = sendSms($conn, (string)$pledge['phone'], $msg, 'pledge_reminder', (int)$pledge['id']);
+    }
+    // Push goes out with the next run of cron/member_notifications.php.
+    if ($memberId && function_exists('mn_ready') && mn_ready($conn)) {
+        mn_enqueue($conn, $memberId, 'reminders', 'pledge_reminder:' . (int)$pledge['id'] . ':' . date('o-W'), 'Pledge reminder', $msg, ['push']);
     }
     return ['email_sent' => $emailSent, 'sms_sent' => $smsSent];
 }
@@ -256,7 +269,7 @@ try {
         $paid = (float)($new['t'] ?? 0);
         $newStatus = $paid >= (float)$p['amount_pledged'] ? 'Fulfilled' : ($paid > 0 ? 'Partial' : 'Pending');
         $conn->query("UPDATE pledges SET amount_paid=$paid,status='$newStatus' WHERE id=$pledge_id");
-        $emailSent = send_pledge_receipt_email($paymentId);
+        $emailSent = pledge_member_wants((int)($p['member_id'] ?? 0) ?: null, 'payments', 'email') && send_pledge_receipt_email($paymentId);
         pj(true, $emailSent ? 'Payment recorded and receipt emailed successfully.' : 'Payment recorded successfully.', [
             'payment_id' => $paymentId,
             'receipt_no' => $rno,
