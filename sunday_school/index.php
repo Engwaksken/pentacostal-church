@@ -311,7 +311,9 @@ try {
     <input type="hidden" name="id" id="classId">
     <div class="ss-grid">
       <div class="ss-field ss-full"><label>Class Name *</label><input type="text" name="class_name" id="class_name" required></div>
-      <div class="ss-field"><label>Age Range</label><input type="text" name="age_range" id="age_range" placeholder="e.g. 3-6 years"></div>
+      <div class="ss-field"><label for="age_from">From Age (years)</label><input type="number" name="age_from" id="age_from" min="0" max="99" step="1" placeholder="e.g. 3"></div>
+      <div class="ss-field"><label for="age_to">To Age (years)</label><input type="number" name="age_to" id="age_to" min="0" max="99" step="1" placeholder="e.g. 5"></div>
+      <div class="ss-field ss-full"><small class="text-muted">Pupils are placed in this class automatically when their age is in this range. Classes cannot overlap. Leave both empty for a class pupils are only added to by hand.</small></div>
       <div class="ss-field"><label>Capacity</label><input type="number" name="capacity" id="capacity" min="0" value="0"></div>
       <div class="ss-field ss-full"><label>Teacher</label><select name="teacher_id" id="teacher_id"><option value="">-- Select Teacher --</option><?php foreach($members as $m): ?><option value="<?= (int)($m['id'] ?? 0) ?>"><?= ss_h(trim((string)($m['full_name'] ?? ''))) ?></option><?php endforeach; ?></select></div>
       <div class="ss-field ss-full"><label>Notes</label><textarea name="notes" id="class_notes"></textarea></div>

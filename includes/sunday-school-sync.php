@@ -237,6 +237,45 @@ function sunday_school_auto_sync(mysqli $conn): array
 }
 
 /**
+ * Checks a class age range an admin entered. Returns an error message, or null when it is fine.
+ * Ranges may not overlap another class, so every age has exactly one class.
+ */
+function sunday_school_check_class_range(mysqli $conn, int $min, int $max, int $excludeClassId = 0): ?string
+{
+    if ($min < 0 || $max > 99) return 'Ages must be between 0 and 99.';
+    if ($min > $max) return 'The "From" age cannot be higher than the "To" age.';
+    foreach (sunday_school_age_classes($conn) as $class) {
+        if ($class['id'] === $excludeClassId) continue;
+        if ($min <= $class['max'] && $max >= $class['min']) {
+            return sprintf('Ages %d-%d overlap with the %s class (%d-%d years). Each age can belong to only one class.',
+                $min, $max, $class['name'], $class['min'], $class['max']);
+        }
+    }
+    return null;
+}
+
+/** The stored text for an age range, e.g. "3-5 years" or "4 years". */
+function sunday_school_format_range(int $min, int $max): string
+{
+    return $min === $max ? $min . ' years' : $min . '-' . $max . ' years';
+}
+
+/** A short summary of what a sync changed, for a save message; '' when nothing changed. */
+function sunday_school_sync_summary(array $sync): string
+{
+    if (empty($sync['ran'])) return '';
+    $notes = [];
+    if ($sync['enrolled'] > 0) $notes[] = $sync['enrolled'] . ' child member' . ($sync['enrolled'] === 1 ? '' : 's') . ' enrolled';
+    if ($sync['moved'] > 0) $notes[] = $sync['moved'] . ' pupil' . ($sync['moved'] === 1 ? '' : 's') . ' moved to the class for their age';
+    if ($sync['graduated'] > 0) $notes[] = $sync['graduated'] . ' graduated';
+    $text = $notes ? ' ' . ucfirst(implode(', ', $notes)) . '.' : '';
+    if ($sync['gaps']) {
+        $text .= ' Note: no class covers age' . (count($sync['gaps']) === 1 ? ' ' : 's ') . implode(', ', $sync['gaps']) . '.';
+    }
+    return $text;
+}
+
+/**
  * When an admin saves a pupil: lock them (the sync then leaves them alone) if the chosen class is not the one
  * for their age, or if they are kept Active although older than every class; unlock them otherwise.
  * Returns 1 or 0 for class_locked.

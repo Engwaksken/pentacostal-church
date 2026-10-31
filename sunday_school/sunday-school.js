@@ -442,10 +442,22 @@
         qs('#classAction').value      = 'update_class';
         qs('#classId').value          = c.id || '';
         qs('#classTitle').textContent = 'Edit Class';
-        ['class_name','age_range','teacher_id','capacity'].forEach(k => {
+        ['class_name','teacher_id','capacity'].forEach(k => {
             const el = qs('#' + k);
             if (el) el.value = c[k] ?? '';
         });
+        // Split the stored range ("3-5 years", "6 to 9", "13+", "4") into the From / To boxes.
+        const rangeText = String(c.age_range || '').toLowerCase();
+        let m = rangeText.match(/(\d{1,2})\s*(?:-|–|—|to)\s*(\d{1,2})/);
+        let from = '', to = '';
+        if (m) { from = Math.min(+m[1], +m[2]); to = Math.max(+m[1], +m[2]); }
+        else if ((m = rangeText.match(/(\d{1,2})\s*\+/))) { from = +m[1]; to = 99; }
+        else if ((m = rangeText.match(/^\D*(\d{1,2})\D*$/))) { from = to = +m[1]; }
+        if (qs('#age_from')) qs('#age_from').value = from;
+        if (qs('#age_to'))   qs('#age_to').value   = to;
+        if (rangeText.trim() && from === '') {
+            showAlert(qs('#classAlert'), 'The saved age range "' + c.age_range + '" could not be read. Enter the From and To ages.', 'error');
+        }
         if (qs('#class_notes')) qs('#class_notes').value = c.notes || '';
         openModal('#classModal');
     }

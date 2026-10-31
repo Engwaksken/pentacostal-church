@@ -715,7 +715,22 @@ try {
         $className = ss_clean($_POST['class_name'] ?? '');
         if ($className === '') ss_json(false, 'Class name is required.');
 
-        $ageRange  = ss_clean($_POST['age_range'] ?? '');
+        require_once __DIR__ . '/../includes/sunday-school-sync.php';
+        if (array_key_exists('age_from', $_POST) || array_key_exists('age_to', $_POST)) {
+            $ageFrom = trim((string)($_POST['age_from'] ?? ''));
+            $ageTo   = trim((string)($_POST['age_to'] ?? ''));
+            if ($ageFrom === '' && $ageTo === '') {
+                $ageRange = '';
+            } elseif ($ageFrom === '' || $ageTo === '' || !ctype_digit($ageFrom) || !ctype_digit($ageTo)) {
+                ss_json(false, 'Enter both the "From" and "To" ages as whole numbers, or leave both empty.');
+            } else {
+                $rangeError = sunday_school_check_class_range($conn, (int)$ageFrom, (int)$ageTo, $action === 'update_class' ? $id : 0);
+                if ($rangeError !== null) ss_json(false, $rangeError);
+                $ageRange = sunday_school_format_range((int)$ageFrom, (int)$ageTo);
+            }
+        } else {
+            $ageRange = ss_clean($_POST['age_range'] ?? '');
+        }
         $teacherId = ss_nullable_int($_POST['teacher_id'] ?? 0);
         $capacity  = ss_int($_POST['capacity'] ?? 0);
         $notes     = ss_clean($_POST['notes'] ?? '');
@@ -725,7 +740,7 @@ try {
             $stmt->bind_param('ssiis', $className, $ageRange, $teacherId, $capacity, $notes);
             $stmt->execute();
             $stmt->close();
-            ss_json(true, 'Class added successfully.');
+            ss_json(true, 'Class added successfully.' . sunday_school_sync_summary(sunday_school_auto_sync($conn)));
         }
 
         if ($id <= 0) ss_json(false, 'Invalid class ID.');
@@ -733,7 +748,7 @@ try {
         $stmt->bind_param('ssiisi', $className, $ageRange, $teacherId, $capacity, $notes, $id);
         $stmt->execute();
         $stmt->close();
-        ss_json(true, 'Class updated successfully.');
+        ss_json(true, 'Class updated successfully.' . sunday_school_sync_summary(sunday_school_auto_sync($conn)));
     }
 
     /* DELETE PUPIL */
