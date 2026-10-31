@@ -371,6 +371,36 @@ function sunday_school_apply_standard_classes(mysqli $conn): array
 }
 
 /**
+ * Sets up the standard classes once per site, the first time the Sunday School page opens after this update,
+ * and records that in site_settings so it never runs again (admins may change the classes afterwards).
+ * Returns the summary from sunday_school_apply_standard_classes(), or null when it had already run.
+ */
+function sunday_school_apply_standard_classes_once(mysqli $conn): ?array
+{
+    $key = 'sunday_school_standard_classes_applied';
+    try {
+        $conn->query("CREATE TABLE IF NOT EXISTS site_settings (id INT AUTO_INCREMENT PRIMARY KEY, setting_key VARCHAR(100) NOT NULL UNIQUE, setting_value TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // Claim the flag first; if another request already did, this inserts nothing and we stop.
+        $stamp = date('Y-m-d H:i:s');
+        $stmt = $conn->prepare('INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES (?, ?)');
+        $stmt->bind_param('ss', $key, $stamp);
+        $stmt->execute();
+        $claimed = $stmt->affected_rows === 1;
+        $stmt->close();
+        if (!$claimed) return null;
+        return sunday_school_apply_standard_classes($conn);
+    } catch (Throwable $e) {
+        error_log('[sunday school standard classes] ' . $e->getMessage());
+        // Let it try again next time.
+        $stmt = $conn->prepare('DELETE FROM site_settings WHERE setting_key = ?');
+        $stmt->bind_param('s', $key);
+        $stmt->execute();
+        $stmt->close();
+        return null;
+    }
+}
+
+/**
  * When an admin saves a pupil: lock them (the sync then leaves them alone) if the chosen class is not the one
  * for their age, or if they are kept Active although older than every class; unlock them otherwise.
  * Returns 1 or 0 for class_locked.

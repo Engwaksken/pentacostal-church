@@ -16,7 +16,13 @@ function ss_count(mysqli $conn, string $sql): int {
 
 /* Enrol child members and place pupils in classes from their dates of birth. */
 require_once '../includes/sunday-school-sync.php';
+// One-time switch to the standard classes (Nursery 3-5, Junior 6-12, Senior 13-17).
+$ssStandard = sunday_school_apply_standard_classes_once($conn);
 $ssSync = sunday_school_auto_sync($conn);
+if ($ssStandard) {
+    // Report the moves made while switching, which the run above no longer sees.
+    foreach (['enrolled', 'linked', 'moved', 'graduated'] as $k) $ssSync[$k] += (int)($ssStandard['sync'][$k] ?? 0);
+}
 
 $totalPupils   = ss_count($conn, "SELECT COUNT(*) FROM sunday_school_pupils");
 $activePupils  = ss_count($conn, "SELECT COUNT(*) FROM sunday_school_pupils WHERE COALESCE(status,'Active')='Active'");
@@ -69,6 +75,7 @@ try {
 <?php
 // A short note only when something changed just now, or when placement needs attention.
 $ssNotes = [];
+if (!empty($ssStandard)) $ssNotes[] = 'classes set to Nursery (3-5), Junior (6-12) and Senior (13-17)';
 if (!empty($ssSync['ran']) && $ssSync['min'] !== null) {
     if ($ssSync['enrolled'] > 0) $ssNotes[] = (int)$ssSync['enrolled'] . ' child member' . ($ssSync['enrolled'] === 1 ? '' : 's') . ' enrolled';
     if ($ssSync['linked'] > 0) $ssNotes[] = (int)$ssSync['linked'] . ' existing pupil' . ($ssSync['linked'] === 1 ? '' : 's') . ' linked to their member record';
