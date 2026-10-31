@@ -445,8 +445,11 @@ if (isset($_GET['users_api'])) {
             if (!in_array($status, ['Active', 'Inactive'], true)) {
                 users_json(['success' => false, 'message' => 'Select a valid status.'], 422);
             }
+            // A new user gets a temporary password (generated unless the admin typed one) and must change it at first sign-in.
             if ($action === 'create' && $password === '') {
-                users_json(['success' => false, 'message' => 'Password is required for a new user.'], 422);
+                require_once __DIR__ . '/../includes/account-setup.php';
+                $password = account_temp_password();
+                $confirmPassword = $password;
             }
             if ($password !== '' && strlen($password) < 6) {
                 users_json(['success' => false, 'message' => 'Password must be at least 6 characters.'], 422);
@@ -527,13 +530,24 @@ if (isset($_GET['users_api'])) {
                 $newId = (int)$stmt->insert_id;
                 $stmt->close();
 
+                require_once __DIR__ . '/../includes/account-setup.php';
+                account_set_must_change($conn, $newId, true);
+                $welcome = account_send_welcome_email($conn, $email, $fullName, $username, $password, 'A staff account');
+
                 users_log($conn, 'user_created', $newId, 'Created system user: ' . $fullName, [
                     'username' => $username,
                     'role' => $role,
                     'status' => $status,
                 ]);
 
-                users_json(['success' => true, 'message' => 'User added successfully.', 'id' => $newId]);
+                users_json([
+                    'success' => true,
+                    'message' => $welcome['sent']
+                        ? 'User added. Their username and temporary password were emailed to ' . $email . '; they must change the password at first sign-in.'
+                        : 'User added, but the welcome email could not be sent (' . $welcome['message'] . '). Give them these details yourself - username: '
+                            . $username . ', temporary password: ' . $password . '. They must change it at first sign-in.',
+                    'id' => $newId,
+                ]);
             }
 
             if ($password !== '') {
@@ -603,8 +617,12 @@ if (isset($_GET['users_api'])) {
             $stmt->execute();
             $stmt->close();
 
+            // A password set by an admin is temporary: the user chooses their own at next sign-in.
+            require_once __DIR__ . '/../includes/account-setup.php';
+            account_set_must_change($conn, $id, true);
+
             users_log($conn, 'user_password_reset', $id, 'Reset a system user password.');
-            users_json(['success' => true, 'message' => 'Password updated successfully.']);
+            users_json(['success' => true, 'message' => 'Password updated. The user must change it the next time they sign in.']);
         }
 
         if ($action === 'delete') {
@@ -965,7 +983,7 @@ include __DIR__ . '/../includes/sidebar.php';
                             </div>
                         </div>
                         <div class="form-group full">
-                            <small class="text-muted" id="passwordHint">Password is required for a new user.</small>
+                            <small class="text-muted" id="passwordHint">Leave the password blank to generate a temporary one. The user receives their username and temporary password by email and must change it at first sign-in.</small>
                         </div>
                     </div>
                 </div>
@@ -1249,11 +1267,11 @@ include __DIR__ . '/../includes/sidebar.php';
         $('#formAction').value = 'create';
         $('#userId').value = '';
         $('#userModalTitle').textContent = 'Add User';
-        $('#password').required = true;
-        $('#confirm_password').required = true;
-        $('#passwordRequired').style.display = '';
-        $('#confirmRequired').style.display = '';
-        $('#passwordHint').textContent = 'Password is required for a new user.';
+        $('#password').required = false;
+        $('#confirm_password').required = false;
+        $('#passwordRequired').style.display = 'none';
+        $('#confirmRequired').style.display = 'none';
+        $('#passwordHint').textContent = 'Leave the password blank to generate a temporary one. The user receives their username and temporary password by email and must change it at first sign-in.';
         $('#status').value = 'Active';
         clearAlert($('#formAlert'));
         openModal('#userModal');

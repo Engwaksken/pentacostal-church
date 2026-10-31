@@ -13,6 +13,11 @@ require_once __DIR__ . '/../includes/access.php';
 
 function requireLogin() {
     if (!isset($_SESSION['user_id'])) { header('Location: ' . BASE_URL . 'index.php'); exit; }
+    // A user signed in with a temporary password must choose their own before using anything else.
+    if (!empty($_SESSION['must_change_password'])
+        && !in_array(basename((string)($_SERVER['SCRIPT_NAME'] ?? '')), ['change-password.php', 'logout.php'], true)) {
+        header('Location: ' . BASE_URL . 'change-password.php'); exit;
+    }
 }
 function isAdmin() { return isset($_SESSION['role']) && $_SESSION['role'] === 'admin'; }
 

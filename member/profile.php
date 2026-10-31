@@ -637,6 +637,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $statement->close();
 
+            require_once __DIR__ . '/../includes/account-setup.php';
+            account_set_must_change($conn, (int)$userId, false);
+
             profileFlash('Your password was changed successfully.');
         } catch (Throwable $exception) {
             error_log(

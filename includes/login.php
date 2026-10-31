@@ -152,6 +152,24 @@ function login_start_authenticated_session(
     $_SESSION['member_id'] = (int)($user['member_id'] ?? 0);
     $_SESSION['email']     = (string)($user['email'] ?? '');
 
+    /* Accounts created with a temporary password must change it before using the system. */
+    unset($_SESSION['must_change_password']);
+    try {
+        $flagCol = $conn->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'must_change_password'");
+        if ($flagCol && $flagCol->num_rows > 0) {
+            $flagStmt = $conn->prepare('SELECT must_change_password FROM users WHERE id = ? LIMIT 1');
+            $flagUserId = (int)$user['id'];
+            $flagStmt->bind_param('i', $flagUserId);
+            $flagStmt->execute();
+            if ((int)($flagStmt->get_result()->fetch_assoc()['must_change_password'] ?? 0) === 1) {
+                $_SESSION['must_change_password'] = 1;
+            }
+            $flagStmt->close();
+        }
+    } catch (Throwable $e) {
+        error_log('[Login] must_change_password check failed: ' . $e->getMessage());
+    }
+
     /*
      * Record the successful login before clearing pending OTP data.
      * A logging failure must never block a valid login.

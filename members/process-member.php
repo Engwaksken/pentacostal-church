@@ -260,7 +260,7 @@ function send_registration_email(mysqli $conn, string $email, string $fullName, 
 
 /** The member number (e.g. MEM-2026-0043) is the login username; the name is only a fallback when there is no number. */
 function unique_member_username(mysqli $conn,string $fullName,string $memberNo):string{$base=trim((string)preg_replace('/[^A-Za-z0-9._-]+/','',$memberNo),'.-_');if($base==='')$base=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','.',$fullName),'.'));if($base==='')$base='member';$candidate=$base;$i=1;while(true){$st=$conn->prepare('SELECT id FROM users WHERE username=? LIMIT 1');$st->bind_param('s',$candidate);$st->execute();$exists=(bool)$st->get_result()->fetch_row();$st->close();if(!$exists)return $candidate;$candidate=$base.'-'.(++$i);}}
-function create_member_login(mysqli $conn,string $fullName,string $memberNo,string $email,string $phone,string $status,array $data=[]):array{$username=clean_value($data['login_username']??'');if($username==='')$username=unique_member_username($conn,$fullName,$memberNo);else{$st=$conn->prepare('SELECT id FROM users WHERE username=? LIMIT 1');$st->bind_param('s',$username);$st->execute();$exists=(bool)$st->get_result()->fetch_row();$st->close();if($exists)throw new Exception('The selected login username is already in use.');}$plain=clean_value($data['login_password']??'');if($plain==='')$plain='Change@'.preg_replace('/\D+/','',$memberNo);if(strlen($plain)<8)$plain.='@1234';$hash=password_hash($plain,PASSWORD_DEFAULT);$full=$fullName;$role='member';$userStatus=$status==='Active'?'Active':'Inactive';$st=$conn->prepare('INSERT INTO users (username,password,full_name,role,email,phone,status) VALUES (?,?,?,?,?,?,?)');if(!$st)throw new Exception('Unable to prepare member login account: '.$conn->error);$st->bind_param('sssssss',$username,$hash,$full,$role,$email,$phone,$userStatus);if(!$st->execute())throw new Exception('Unable to create member login account: '.$st->error);$uid=(int)$conn->insert_id;$st->close();return ['user_id'=>$uid,'username'=>$username,'temporary_password'=>$plain];}
+function create_member_login(mysqli $conn,string $fullName,string $memberNo,string $email,string $phone,string $status,array $data=[]):array{$username=clean_value($data['login_username']??'');if($username==='')$username=unique_member_username($conn,$fullName,$memberNo);else{$st=$conn->prepare('SELECT id FROM users WHERE username=? LIMIT 1');$st->bind_param('s',$username);$st->execute();$exists=(bool)$st->get_result()->fetch_row();$st->close();if($exists)throw new Exception('The selected login username is already in use.');}require_once __DIR__.'/../includes/account-setup.php';$plain=clean_value($data['login_password']??'');if($plain==='')$plain=account_temp_password();$hash=password_hash($plain,PASSWORD_DEFAULT);$full=$fullName;$role='member';$userStatus=$status==='Active'?'Active':'Inactive';$st=$conn->prepare('INSERT INTO users (username,password,full_name,role,email,phone,status) VALUES (?,?,?,?,?,?,?)');if(!$st)throw new Exception('Unable to prepare member login account: '.$conn->error);$st->bind_param('sssssss',$username,$hash,$full,$role,$email,$phone,$userStatus);if(!$st->execute())throw new Exception('Unable to create member login account: '.$st->error);$uid=(int)$conn->insert_id;$st->close();account_set_must_change($conn,$uid,true);return ['user_id'=>$uid,'username'=>$username,'temporary_password'=>$plain];}
 
 /**
  * Insert a single member record.
@@ -336,7 +336,9 @@ function insert_member(mysqli $conn, array $data): array
 
     save_member_extras($conn, $newId, $data);
     sync_department_member($conn, $newId, $deptId, $deptRole, $joinedDate);
-    $emailSent = send_registration_email($conn, $email, $fullName, $memberNo, $joinedDate);
+    // The welcome email carries the member number, username and temporary password.
+    $welcome = account_send_welcome_email($conn, $email, $fullName, $login['username'], $login['temporary_password'], 'A member account (member no. ' . $memberNo . ')');
+    $emailSent = $welcome['sent'];
 
     return ['id'=>$newId,'member_no'=>$memberNo,'email_sent'=>$emailSent,'username'=>$login['username'],'temporary_password'=>$login['temporary_password']];
 }
@@ -877,8 +879,9 @@ try {
             ? "{$inserted} member(s) imported successfully."
             : "{$inserted} of {$total} members imported.";
         if ($rowErrors) $msg .= ' Issues: ' . implode(' | ', array_slice($rowErrors, 0, 5));
-        if ($emailsSent > 0)
-            $msg .= " Confirmation email" . ($emailsSent > 1 ? 's' : '') . " sent: {$emailsSent}.";
+        $msg .= " Sign-in details (username and temporary password) emailed to {$emailsSent} member(s).";
+        if ($inserted > $emailsSent)
+            $msg .= ' ' . ($inserted - $emailsSent) . ' had no valid email address or the email failed: reset their password on the Users page and give it to them.';
 
         json_out([
             'success'     => true,
@@ -921,8 +924,9 @@ try {
         json_out([
             'success'    => true,
             'message'    => $result['email_sent']
-                ? 'Member registered successfully and confirmation email sent.'
-                : 'Member registered successfully.',
+                ? 'Member registered. Their username and temporary password were emailed; they must change the password at first sign-in.'
+                : 'Member registered, but no welcome email was sent (no valid email address, or sending failed). Give them these details yourself - username: '
+                    . ($result['username'] ?? '') . ', temporary password: ' . ($result['temporary_password'] ?? '') . '. They must change it at first sign-in.',
             'id'         => $result['id'],
             'member_no'  => $result['member_no'],
             'email_sent' => $result['email_sent'],
@@ -986,8 +990,9 @@ try {
             $msg = "{$inserted} of {$total} members registered.";
             if ($rowErrors) $msg .= ' Issues: ' . implode(' | ', $rowErrors);
         }
-        if ($emailsSent > 0)
-            $msg .= " Confirmation email" . ($emailsSent > 1 ? 's' : '') . " sent: {$emailsSent}.";
+        $msg .= " Sign-in details (username and temporary password) emailed to {$emailsSent} member(s).";
+        if ($inserted > $emailsSent)
+            $msg .= ' ' . ($inserted - $emailsSent) . ' had no valid email address or the email failed: reset their password on the Users page and give it to them.';
 
         json_out([
             'success'     => true,

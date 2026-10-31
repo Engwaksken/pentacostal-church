@@ -70,8 +70,16 @@ function mapi_action_login(mysqli $conn): never
     mapi_clear_failures($conn, $key);
 
     $token = mapi_issue_token($conn, (int)$account['user_id'], (int)$account['member_id'], $device);
+    $mustChange = false;
+    try {
+        $flag = mapi_row($conn, 'SELECT must_change_password FROM users WHERE id=? LIMIT 1', 'i', [(int)$account['user_id']]);
+        $mustChange = (int)($flag['must_change_password'] ?? 0) === 1;
+    } catch (Throwable $e) {
+        // Older database without the column: nothing to change.
+    }
     mapi_ok([
         'token' => $token,
+        'must_change_password' => $mustChange,
         'expires_in_days' => MAPI_TOKEN_DAYS,
         'member' => mapi_member_profile($conn, (int)$account['member_id']),
     ]);
@@ -116,6 +124,14 @@ function mapi_action_change_password(mysqli $conn): never
     $stmt->bind_param('si', $hash, $auth['user_id']);
     $stmt->execute();
     $stmt->close();
+    try {
+        $stmt = $conn->prepare('UPDATE users SET must_change_password=0 WHERE id=?');
+        $stmt->bind_param('i', $auth['user_id']);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Throwable $e) {
+        // Older database without the column.
+    }
     // Sign out the member's other devices; this one stays signed in.
     $stmt = $conn->prepare('UPDATE member_api_tokens SET revoked_at=NOW() WHERE user_id=? AND id<>? AND revoked_at IS NULL');
     $stmt->bind_param('ii', $auth['user_id'], $auth['token_id']);

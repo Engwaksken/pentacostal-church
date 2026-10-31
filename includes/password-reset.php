@@ -212,6 +212,15 @@ function password_reset_complete(mysqli $conn, string $token, string $new, strin
         $stmt->execute();
         $stmt->close();
 
+        // The user chose this password themselves, so it is no longer temporary.
+        $flagCol = $conn->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'must_change_password'");
+        if ($flagCol && $flagCol->num_rows > 0) {
+            $stmt = $conn->prepare('UPDATE users SET must_change_password = 0 WHERE id = ?');
+            $stmt->bind_param('i', $userId);
+            $stmt->execute();
+            $stmt->close();
+        }
+
         $stmt = $conn->prepare('UPDATE password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL');
         $stmt->bind_param('i', $userId);
         $stmt->execute();
