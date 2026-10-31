@@ -154,3 +154,36 @@ if (!function_exists('cb_load_dompdf')) {
     }
 }
 
+/** The labels printed under the signature lines of a wedding record, in order (two per row). */
+if (!defined('CB_WEDDING_SIGNATURE_DEFAULTS')) {
+    define('CB_WEDDING_SIGNATURE_DEFAULTS', ['Groom Signature', 'Bride Signature', 'Witness 1 Signature', 'Witness 2 Signature', 'Officiating Minister', 'Date / Church Stamp']);
+}
+
+if (!function_exists('cb_wedding_signature_lines')) {
+
+    /** The six wedding record signature labels set by an admin (Wedding Vows Book > Signature Lines); a blank one uses its default. */
+    function cb_wedding_signature_lines(mysqli $conn): array {
+        $saved = json_decode(cb_site_setting($conn, 'wedding_signature_lines', '[]'), true);
+        $lines = [];
+        foreach (CB_WEDDING_SIGNATURE_DEFAULTS as $i => $default) {
+            $label = is_array($saved) ? trim((string)($saved[$i] ?? '')) : '';
+            $lines[] = $label !== '' ? $label : $default;
+        }
+        return $lines;
+    }
+
+    /** Saves the six labels; blank ones are stored empty so they fall back to their defaults. */
+    function cb_save_wedding_signature_lines(mysqli $conn, array $labels): void {
+        $clean = [];
+        foreach (array_keys(CB_WEDDING_SIGNATURE_DEFAULTS) as $i) {
+            $clean[] = mb_substr(trim(strip_tags((string)($labels[$i] ?? ''))), 0, 80);
+        }
+        $conn->query("CREATE TABLE IF NOT EXISTS site_settings (id INT AUTO_INCREMENT PRIMARY KEY, setting_key VARCHAR(100) NOT NULL UNIQUE, setting_value TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $key = 'wedding_signature_lines';
+        $value = json_encode($clean, JSON_UNESCAPED_UNICODE);
+        $stmt = $conn->prepare('INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
+        $stmt->bind_param('ss', $key, $value);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
