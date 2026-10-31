@@ -398,6 +398,24 @@ HTML;
     ];
 }
 
+/**
+ * True when $password is one of the old automatic member passwords, "Change@" followed by the digits of the
+ * member number (with "@1234" or "1234" added when it was short). Anyone who knows a member number could guess
+ * these, so they are no longer accepted for signing in.
+ */
+function login_is_legacy_member_password(mysqli $conn, int $memberId, string $password): bool
+{
+    if ($memberId <= 0 || !str_starts_with($password, 'Change@')) return false;
+    $stmt = $conn->prepare('SELECT member_no FROM members WHERE id = ? LIMIT 1');
+    if (!$stmt) return false;
+    $stmt->bind_param('i', $memberId);
+    $stmt->execute();
+    $memberNo = (string)($stmt->get_result()->fetch_assoc()['member_no'] ?? '');
+    $stmt->close();
+    $base = 'Change@' . preg_replace('/\D+/', '', $memberNo);
+    return in_array($password, [$base, $base . '@1234', $base . '1234'], true);
+}
+
 function process_login(mysqli $conn, array $post): array
 {
     $identity = trim((string)($post['identity'] ?? $post['username'] ?? ''));
@@ -447,6 +465,28 @@ function process_login(mysqli $conn, array $post): array
     }
 
     $memberId = (int)($user['member_id'] ?? 0);
+
+    /*
+     * The old guessable member password no longer signs anyone in. Instead the account's owner is emailed a
+     * reset link, so only someone with access to that inbox can set the new password.
+     */
+    if (login_is_legacy_member_password($conn, $memberId, $password)) {
+        require_once __DIR__ . '/password-reset.php';
+        $hasEmail = filter_var(trim((string)($user['email'] ?? '')), FILTER_VALIDATE_EMAIL) !== false;
+        $reset = $hasEmail ? password_reset_request($conn, (string)$user['username']) : ['success' => false];
+
+        if (function_exists('activity_log')) {
+            activity_log($conn, (int)$user['id'], 'login_blocked_legacy_password',
+                'Sign-in refused: the account still used the old automatic password.', ['reset_email' => $hasEmail]);
+        }
+
+        return [
+            'success' => false,
+            'message' => $hasEmail && !empty($reset['success'])
+                ? 'For your security, the starting password for your account has been retired. We have emailed you a link to choose a new password (it expires in 1 hour).'
+                : 'For your security, the starting password for your account has been retired. Please contact the church office to have your password reset.',
+        ];
+    }
 
     /* Members keep the existing direct-login behavior. */
     if ($memberId > 0) {

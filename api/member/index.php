@@ -69,6 +69,15 @@ function mapi_action_login(mysqli $conn): never
     }
     mapi_clear_failures($conn, $key);
 
+    // The old guessable member password (Change@ + member number digits) no longer signs anyone in.
+    if (str_starts_with($password, 'Change@')) {
+        $memberNo = (string)(mapi_row($conn, 'SELECT member_no FROM members WHERE id=? LIMIT 1', 'i', [(int)$account['member_id']])['member_no'] ?? '');
+        $base = 'Change@' . preg_replace('/\D+/', '', $memberNo);
+        if (in_array($password, [$base, $base . '@1234', $base . '1234'], true)) {
+            mapi_fail(403, 'For your security, your starting password has been retired. Use "Forgot password" on the church website to choose a new one, or contact the church office.');
+        }
+    }
+
     $token = mapi_issue_token($conn, (int)$account['user_id'], (int)$account['member_id'], $device);
     $mustChange = false;
     try {
