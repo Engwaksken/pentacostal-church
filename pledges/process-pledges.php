@@ -31,7 +31,7 @@ if (PHP_SAPI !== 'cli') {
     // Anything that changes data must be a POST carrying the page's security token,
     // so another site cannot make a signed-in user's browser change pledges.
     $requestAction = (string)($_REQUEST['action'] ?? 'list');
-    if (!in_array($requestAction, ['list', 'get', 'options'], true)) {
+    if (!in_array($requestAction, ['list', 'get', 'options', 'payments'], true)) {
         if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') pj(false, 'Invalid request method.');
         $sentToken = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '');
         $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
@@ -297,6 +297,11 @@ function normalize_date(string $date): string {
     return '';
 }
 const PLEDGE_STATUSES = ['Pending', 'Partial', 'Fulfilled', 'Cancelled'];
+/** First day of a YYYY-MM month and first day of the next month, for paid_on >= start AND paid_on < end. */
+function pledge_month_range(string $month): array {
+    $start = DateTimeImmutable::createFromFormat('!Y-m', $month) ?: new DateTimeImmutable('first day of this month');
+    return [$start->format('Y-m-01'), $start->modify('first day of next month')->format('Y-m-d')];
+}
 function pledge_import_phone_key(string $phone): string { return preg_replace('/\D+/', '', $phone) ?? ''; }
 function pledge_import_no_key(string $number): string { return strtoupper(preg_replace('/[^\pL\pN]+/u', '', trim($number)) ?? ''); }
 
@@ -511,7 +516,33 @@ try {
         $yearStats = one("SELECT COALESCE(SUM(CASE WHEN $yearColumn=".(int)date('Y')." THEN p.amount_pledged ELSE 0 END),0) this_year,
             COALESCE(SUM(CASE WHEN $yearColumn=".((int)date('Y')-1)." THEN p.amount_pledged ELSE 0 END),0) last_year FROM pledges p WHERE p.status<>'Cancelled'");
         $stats = array_merge($stats ?: [], $yearStats ?: []);
+        // Money received this calendar month on pledges that are not cancelled.
+        [$monthStart, $monthEnd] = pledge_month_range(date('Y-m'));
+        $stats['paid_this_month'] = table_exists('pledge_payments')
+            ? (float)(one("SELECT COALESCE(SUM(pp.amount),0) t FROM pledge_payments pp JOIN pledges p ON p.id=pp.pledge_id
+                WHERE pp.paid_on>='$monthStart' AND pp.paid_on<'$monthEnd' AND p.status<>'Cancelled'")['t'] ?? 0)
+            : 0.0;
         pj(true, '', ['items' => $rows, 'stats' => $stats ?: []]);
+    }
+
+    if ($action === 'payments') {
+        // Payments received in one month (YYYY-MM, default this month), for the "Paid This Month" list.
+        if (!table_exists('pledge_payments')) pj(true, '', ['items' => [], 'month' => date('Y-m')]);
+        $month = clean($_GET['month'] ?? '');
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) $month = date('Y-m');
+        [$monthStart, $monthEnd] = pledge_month_range($month);
+        [$typeSelect, $typeJoin] = pledge_purpose_sql($conn);
+        $items = many("SELECT pp.id, pp.pledge_id, pp.amount, pp.paid_on, pp.method, pp.receipt_no,
+                p.pledge_no, p.pledge_reason, p.status, m.full_name, m.member_no, pr.name AS project_name $typeSelect
+            FROM pledge_payments pp
+            JOIN pledges p ON p.id=pp.pledge_id
+            LEFT JOIN members m ON m.id=p.member_id
+            LEFT JOIN projects pr ON pr.id=p.project_id $typeJoin
+            WHERE pp.paid_on>='$monthStart' AND pp.paid_on<'$monthEnd' AND p.status<>'Cancelled'
+            ORDER BY pp.paid_on DESC, pp.id DESC");
+        foreach ($items as &$r) $r['purpose'] = pledge_purpose($r);
+        unset($r);
+        pj(true, '', ['items' => $items, 'month' => $month]);
     }
 
     if ($action === 'get') {

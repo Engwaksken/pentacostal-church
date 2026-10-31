@@ -21,7 +21,24 @@ include '../includes/sidebar.php';
 <div class="main-content pledges-module">
 <?php include '../includes/topbar.php'; ?>
 <div class="content-area">
-<style>.pledges-module .stat-card-click{font:inherit;text-align:left;width:100%;cursor:pointer}.pledges-module .stat-card-click:focus-visible{outline:3px solid #f0b429;outline-offset:2px}.pledges-module .stat-card-click .stat-label,.pledges-module .stat-card-click .stat-value{color:#fff}</style>
+<style>.pledges-module .stat-card-click{font:inherit;text-align:left;width:100%;cursor:pointer}.pledges-module .stat-card-click:focus-visible{outline:3px solid #f0b429;outline-offset:2px}.pledges-module .stat-card-click .stat-label,.pledges-module .stat-card-click .stat-value{color:#fff}
+.app-dialog-xl{width:min(1200px,100%)}
+.pledge-pagination-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 0 0;border-top:1px solid var(--border);margin-top:14px}
+.pledge-pagination-summary{color:var(--text-muted);font-size:12px}
+.pledge-pagination-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pledge-pagination-right select{width:auto;min-width:0;height:36px;padding:0 8px;font-size:12px}
+.pledge-pagination{display:flex;flex-wrap:wrap;gap:6px}
+.pledge-page-btn{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:36px;padding:0 11px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.pledge-page-btn:hover:not(:disabled){border-color:var(--primary);color:var(--primary);background:var(--primary-fade)}
+.pledge-page-btn.active{border-color:var(--primary);background:var(--primary);color:#fff}
+.pledge-page-btn:disabled{opacity:.45;cursor:not-allowed}
+.pledge-page-ellipsis{display:inline-grid;place-items:center;min-width:24px;height:36px;color:var(--text-muted)}
+.pledge-stat-summary{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.pledge-stat-summary span{padding:6px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;background:var(--primary-fade)}
+#statModal .table-responsive{max-height:55vh;overflow:auto}
+#statModal thead th{position:sticky;top:0;background:#fff;z-index:1}
+@media(max-width:767px){.pledge-pagination-bar{align-items:flex-start;flex-direction:column}}
+</style>
 <?php if (function_exists('showFlash')) { showFlash(); } ?>
 <div class="page-header module-page-header">
   <div>
@@ -38,14 +55,15 @@ include '../includes/sidebar.php';
 </div>
 
 <div class="stats-grid module-stats-grid">
-  <button type="button" class="stat-card stat-card-click" data-stat-action="all"><div class="stat-icon"><i class="fas fa-hand-holding-heart"></i></div><div><div class="stat-value" id="stTotal">UGX 0</div><div class="stat-label">Total Pledged</div></div></button>
-  <button type="button" class="stat-card success stat-card-click" data-stat-action="all"><div class="stat-icon"><i class="fas fa-coins"></i></div><div><div class="stat-value" id="stPaid">UGX 0</div><div class="stat-label">Total Paid</div></div></button>
-  <button type="button" class="stat-card accent stat-card-click" data-stat-status="Pending"><div class="stat-icon"><i class="fas fa-clock"></i></div><div><div class="stat-value" id="stPending">0</div><div class="stat-label">Pending</div></div></button>
-  <button type="button" class="stat-card danger stat-card-click" data-stat-action="overdue"><div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div><div><div class="stat-value" id="stOverdue">0</div><div class="stat-label">Overdue</div></div></button>
-  <button type="button" class="stat-card info stat-card-click" data-stat-status="Partial"><div class="stat-icon"><i class="fas fa-adjust"></i></div><div><div class="stat-value" id="stPartial">0</div><div class="stat-label">Partial</div></div></button>
-  <button type="button" class="stat-card success stat-card-click" data-stat-status="Fulfilled"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div><div class="stat-value" id="stFulfilled">0</div><div class="stat-label">Fulfilled</div></div></button>
-  <button type="button" class="stat-card stat-card-click" data-stat-year="<?= (int)date('Y') ?>"><div class="stat-icon"><i class="fas fa-calendar-day"></i></div><div><div class="stat-value" id="stThisYear">UGX 0</div><div class="stat-label">Pledged This Year (<?= (int)date('Y') ?>)</div></div></button>
-  <button type="button" class="stat-card stat-card-click" data-stat-year="<?= (int)date('Y')-1 ?>"><div class="stat-icon"><i class="fas fa-calendar-minus"></i></div><div><div class="stat-value" id="stLastYear">UGX 0</div><div class="stat-label">Pledged Last Year (<?= (int)date('Y')-1 ?>)</div></div></button>
+  <button type="button" class="stat-card stat-card-click" data-detail="total" title="Open the list"><div class="stat-icon"><i class="fas fa-hand-holding-heart"></i></div><div><div class="stat-value" id="stTotal">UGX 0</div><div class="stat-label">Total Pledged</div></div></button>
+  <button type="button" class="stat-card success stat-card-click" data-detail="paid" title="Open the list"><div class="stat-icon"><i class="fas fa-coins"></i></div><div><div class="stat-value" id="stPaid">UGX 0</div><div class="stat-label">Total Paid</div></div></button>
+  <button type="button" class="stat-card success stat-card-click" data-detail="month" title="Open the list"><div class="stat-icon"><i class="fas fa-calendar-check"></i></div><div><div class="stat-value" id="stThisMonth">UGX 0</div><div class="stat-label">Paid This Month (<?= ph(date('F Y')) ?>)</div></div></button>
+  <button type="button" class="stat-card accent stat-card-click" data-detail="Pending" title="Open the list"><div class="stat-icon"><i class="fas fa-clock"></i></div><div><div class="stat-value" id="stPending">0</div><div class="stat-label">Pending</div></div></button>
+  <button type="button" class="stat-card danger stat-card-click" data-detail="overdue" title="Open the list"><div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div><div><div class="stat-value" id="stOverdue">0</div><div class="stat-label">Overdue</div></div></button>
+  <button type="button" class="stat-card info stat-card-click" data-detail="Partial" title="Open the list"><div class="stat-icon"><i class="fas fa-adjust"></i></div><div><div class="stat-value" id="stPartial">0</div><div class="stat-label">Partial</div></div></button>
+  <button type="button" class="stat-card success stat-card-click" data-detail="Fulfilled" title="Open the list"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div><div class="stat-value" id="stFulfilled">0</div><div class="stat-label">Fulfilled</div></div></button>
+  <button type="button" class="stat-card stat-card-click" data-detail="year" data-year="<?= (int)date('Y') ?>" title="Open the list"><div class="stat-icon"><i class="fas fa-calendar-day"></i></div><div><div class="stat-value" id="stThisYear">UGX 0</div><div class="stat-label">Pledged This Year (<?= (int)date('Y') ?>)</div></div></button>
+  <button type="button" class="stat-card stat-card-click" data-detail="year" data-year="<?= (int)date('Y')-1 ?>" title="Open the list"><div class="stat-icon"><i class="fas fa-calendar-minus"></i></div><div><div class="stat-value" id="stLastYear">UGX 0</div><div class="stat-label">Pledged Last Year (<?= (int)date('Y')-1 ?>)</div></div></button>
 </div>
 
 <div class="card">
@@ -66,12 +84,49 @@ include '../includes/sidebar.php';
         <tbody id="pledgeTbody"><tr><td colspan="10" class="text-center text-muted">Loading pledges...</td></tr></tbody>
       </table>
     </div>
+    <div class="pledge-pagination-bar">
+      <div class="pledge-pagination-summary" id="pledgePageSummary">Showing 0 records</div>
+      <div class="pledge-pagination-right">
+        <select id="pledgePageSize" class="form-control" aria-label="Pledges per page"><option value="10">10 per page</option><option value="25" selected>25 per page</option><option value="50">50 per page</option><option value="100">100 per page</option></select>
+        <nav class="pledge-pagination" id="pledgePager" aria-label="Pledges pages"></nav>
+      </div>
+    </div>
   </div>
 </div>
 </div>
 </div>
 
 <div class="app-modal-backdrop" id="pledgeBackdrop"></div>
+
+<!-- Opened from a statistics card: the pledges (or this month's payments) behind that number. -->
+<div class="app-modal" id="statModal" aria-hidden="true"><div class="app-dialog app-dialog-xl">
+  <div class="app-modal-header"><h3 id="statTitle"><i class="fas fa-chart-bar"></i> Pledges</h3><button type="button" class="modal-close" data-close-pledge>&times;</button></div>
+  <div class="app-modal-body">
+    <p id="statSubtitle" class="text-muted"></p>
+    <div class="pledge-stat-summary" id="statSummary"></div>
+    <div class="page-toolbar">
+      <div class="page-toolbar-search"><i class="fas fa-search"></i><input type="text" class="form-control" id="statSearch" placeholder="Search member, pledge no, purpose..."></div>
+      <div class="page-toolbar-filters">
+        <select id="statStatus" class="form-control" aria-label="Filter by status"><option value="">All statuses</option><option>Pending</option><option>Partial</option><option>Fulfilled</option></select>
+        <select id="statType" class="form-control" aria-label="Filter by what the pledge is for"><option value="">All purposes</option></select>
+        <input type="month" id="statMonth" class="form-control" value="<?= ph(date('Y-m')) ?>" max="<?= ph(date('Y-m')) ?>" aria-label="Payment month">
+        <select id="statMethod" class="form-control" aria-label="Filter by payment method"><option value="">All methods</option><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option><option>Cheque</option><option>Other</option></select>
+      </div>
+    </div>
+    <div id="statAlert" class="ajax-alert"></div>
+    <div class="table-responsive">
+      <table class="table module-table"><thead id="statHead"></thead><tbody id="statTbody"></tbody></table>
+    </div>
+    <div class="pledge-pagination-bar">
+      <div class="pledge-pagination-summary" id="statPageSummary">Showing 0 records</div>
+      <div class="pledge-pagination-right">
+        <select id="statPageSize" class="form-control" aria-label="Rows per page"><option value="10" selected>10 per page</option><option value="25">25 per page</option><option value="50">50 per page</option><option value="100">100 per page</option></select>
+        <nav class="pledge-pagination" id="statPager" aria-label="List pages"></nav>
+      </div>
+    </div>
+  </div>
+  <div class="app-modal-footer"><button type="button" class="btn btn-outline" data-close-pledge>Close</button></div>
+</div></div>
 
 <div class="app-modal" id="pledgeImportModal" aria-hidden="true"><div class="app-dialog"><form id="pledgeImportForm" enctype="multipart/form-data">
   <div class="app-modal-header"><h3><i class="fas fa-file-export"></i> Prepare Annual Pledge Files</h3><button type="button" class="modal-close" data-close-pledge>&times;</button></div>
@@ -147,13 +202,97 @@ function alertBox(el,msg,type='success'){ if(!el)return; el.className='ajax-aler
 function clearAlert(el){ if(el){el.className='ajax-alert'; el.textContent='';} }
 function openModal(id){ qs('#pledgeBackdrop').classList.add('show'); qs(id).classList.add('show'); document.body.style.overflow='hidden'; }
 function closeModals(){ qsa('.app-modal,.app-modal-backdrop').forEach(x=>x.classList.remove('show')); document.body.style.overflow=''; }
+// Closes one window; if another is still open underneath (e.g. a statistics list), it stays open.
+function closeModal(el){ if(!el)return; el.classList.remove('show'); if(!qs('.app-modal.show')){ qs('#pledgeBackdrop').classList.remove('show'); document.body.style.overflow=''; } }
+function isOpen(id){ return qs(id).classList.contains('show'); }
+// Success messages go to the page, and also into the statistics list when it is open on top.
+function pageMsg(msg,type='success'){ alertBox(qs('#pageAlert'),msg,type); if(isOpen('#statModal')) alertBox(qs('#statAlert'),msg,type); }
+const today=new Date().toISOString().slice(0,10);
+const isOverdue=p=>['Pending','Partial'].includes(p.status)&&p.due_date&&p.due_date<today;
+// Client-side pagination for a table body: pager.set(items, keepPage) redraws.
+function createPager(o){
+  let items=[], page=1;
+  const size=()=>Number(qs(o.size).value)||25;
+  function buttons(pages){
+    const nums=[...new Set([1,page-1,page,page+1,pages])].filter(n=>n>=1&&n<=pages).sort((a,b)=>a-b);
+    let html=`<button type="button" class="pledge-page-btn" data-page="${page-1}" ${page<=1?'disabled':''} aria-label="Previous page">&lsaquo;</button>`, last=0;
+    nums.forEach(n=>{ if(n-last>1) html+='<span class="pledge-page-ellipsis">…</span>'; html+=`<button type="button" class="pledge-page-btn${n===page?' active':''}" data-page="${n}" ${n===page?'aria-current="page"':''}>${n}</button>`; last=n; });
+    return html+`<button type="button" class="pledge-page-btn" data-page="${page+1}" ${page>=pages?'disabled':''} aria-label="Next page">&rsaquo;</button>`;
+  }
+  function draw(){
+    const n=items.length, ps=size(), pages=Math.max(1,Math.ceil(n/ps)); if(page>pages)page=pages;
+    const start=(page-1)*ps, slice=items.slice(start,start+ps);
+    qs(o.tbody).innerHTML=slice.length?slice.map((r,i)=>o.row(r,start+i+1)).join(''):`<tr><td colspan="${o.cols()}" class="text-center text-muted">${esc(o.empty)}</td></tr>`;
+    qs(o.summary).textContent=n?`Showing ${(start+1).toLocaleString()}–${(start+slice.length).toLocaleString()} of ${n.toLocaleString()}`:'Showing 0 records';
+    qs(o.nav).innerHTML=pages>1?buttons(pages):'';
+  }
+  qs(o.nav).addEventListener('click',e=>{ const b=e.target.closest('[data-page]'); if(!b||b.disabled)return; page=Number(b.dataset.page); draw(); const box=qs(o.tbody).closest('.table-responsive'); if(box) box.scrollTop=0; if(o.scrollTo) qs(o.scrollTo).scrollIntoView({block:'start',behavior:'smooth'}); });
+  qs(o.size).addEventListener('change',()=>{ page=1; draw(); });
+  return { set(list,keepPage){ items=list; if(!keepPage) page=1; draw(); } };
+}
 async function req(url,opts={}){ const res=await fetch(url,Object.assign({headers:{'X-Requested-With':'XMLHttpRequest','X-CSRF-Token':cfg.csrfToken||''}},opts)); const txt=await res.text(); try{return JSON.parse(txt)}catch(e){throw new Error('Invalid server response: '+txt.slice(0,250));} }
 async function post(form){ return req(cfg.endpoint,{method:'POST',body:new FormData(form)}); }
 function badge(s){ const map={Pending:'badge-warning',Partial:'badge-info',Fulfilled:'badge-success',Cancelled:'badge-danger'}; return `<span class="badge ${map[s]||'badge-secondary'}">${esc(s||'—')}</span>`; }
-function renderStats(st){ qs('#stTotal').textContent=money(st.total||0); qs('#stPaid').textContent=money(st.paid||0); qs('#stPending').textContent=Number(st.pending||0); qs('#stOverdue').textContent=Number(st.overdue||0); qs('#stPartial').textContent=Number(st.partial||0); qs('#stFulfilled').textContent=Number(st.fulfilled||0); qs('#stThisYear').textContent=money(st.this_year||0); qs('#stLastYear').textContent=money(st.last_year||0); }
-function render(items){ const tb=qs('#pledgeTbody'); if(!items.length){ tb.innerHTML='<tr><td colspan="10" class="text-center text-muted">No pledges found.</td></tr>'; return; } tb.innerHTML=items.map((p,i)=>{ const balance=Number(p.amount_pledged||0)-Number(p.amount_paid||0); const purpose=p.purpose||p.project_name||p.pledge_reason||'General Pledge'; return `<tr><td>${i+1}</td><td><b>${esc(p.pledge_no)}</b></td><td>${esc(p.full_name||'—')}<br><small>${esc(p.member_no||'')}</small></td><td>${esc(purpose)}</td><td>${money(p.amount_pledged)}</td><td>${money(p.amount_paid)}</td><td>${money(balance)}</td><td>${esc(p.due_date||'—')}</td><td>${badge(p.status)}</td><td><div class="table-action"><button class="btn btn-sm btn-info btn-icon" data-action="view" data-id="${Number(p.id)}" title="View"><i class="fas fa-eye"></i></button><button class="btn btn-sm btn-primary btn-icon" data-action="edit" data-id="${Number(p.id)}" title="Edit"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-success btn-icon" data-action="pay" data-id="${Number(p.id)}" data-balance="${balance}" data-name="${esc(p.pledge_no)}" title="Pay"><i class="fas fa-coins"></i></button><a class="btn btn-sm btn-accent btn-icon" href="pledge_card.php?pledge_id=${Number(p.id)}" target="_blank" title="Pledge Card"><i class="fas fa-id-card"></i></a><button class="btn btn-sm btn-danger btn-icon" data-action="delete" data-id="${Number(p.id)}" data-name="${esc(p.pledge_no)}" title="Delete"><i class="fas fa-trash"></i></button></div></td></tr>`; }).join(''); }
-function applySearch(){ const t=(qs('#pledgeSearch').value||'').toLowerCase(); render(rows.filter(r=>Object.values(r).join(' ').toLowerCase().includes(t))); }
-async function load(){ clearAlert(qs('#pageAlert')); const d=await req(cfg.endpoint+'?action=list&status='+encodeURIComponent(qs('#pledgeStatusFilter').value)+'&year='+encodeURIComponent(qs('#pledgeYearFilter').value)+'&type='+encodeURIComponent(qs('#pledgeTypeFilter').value)+'&overdue='+(overdueOnly?'1':'0')); if(!d.success) throw new Error(d.message||'Failed to load pledges.'); rows=d.items||[]; renderStats(d.stats||{}); applySearch(); }
+function renderStats(st){ qs('#stTotal').textContent=money(st.total||0); qs('#stPaid').textContent=money(st.paid||0); qs('#stPending').textContent=Number(st.pending||0); qs('#stOverdue').textContent=Number(st.overdue||0); qs('#stPartial').textContent=Number(st.partial||0); qs('#stFulfilled').textContent=Number(st.fulfilled||0); qs('#stThisYear').textContent=money(st.this_year||0); qs('#stLastYear').textContent=money(st.last_year||0); qs('#stThisMonth').textContent=money(st.paid_this_month||0); }
+function pledgeRow(p,n){ const balance=Number(p.amount_pledged||0)-Number(p.amount_paid||0); const purpose=p.purpose||p.project_name||p.pledge_reason||'General Pledge'; return `<tr><td>${n}</td><td><b>${esc(p.pledge_no)}</b></td><td>${esc(p.full_name||'—')}<br><small>${esc(p.member_no||'')}</small></td><td>${esc(purpose)}</td><td>${money(p.amount_pledged)}</td><td>${money(p.amount_paid)}</td><td>${money(balance)}</td><td>${esc(p.due_date||'—')}</td><td>${badge(p.status)}</td><td><div class="table-action"><button class="btn btn-sm btn-info btn-icon" data-action="view" data-id="${Number(p.id)}" title="View"><i class="fas fa-eye"></i></button><button class="btn btn-sm btn-primary btn-icon" data-action="edit" data-id="${Number(p.id)}" title="Edit"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-success btn-icon" data-action="pay" data-id="${Number(p.id)}" data-balance="${balance}" data-name="${esc(p.pledge_no)}" title="Pay"><i class="fas fa-coins"></i></button><a class="btn btn-sm btn-accent btn-icon" href="pledge_card.php?pledge_id=${Number(p.id)}" target="_blank" title="Pledge Card"><i class="fas fa-id-card"></i></a><button class="btn btn-sm btn-danger btn-icon" data-action="delete" data-id="${Number(p.id)}" data-name="${esc(p.pledge_no)}" title="Delete"><i class="fas fa-trash"></i></button></div></td></tr>`; }
+const pledgePager=createPager({tbody:'#pledgeTbody',summary:'#pledgePageSummary',nav:'#pledgePager',size:'#pledgePageSize',cols:()=>10,empty:'No pledges found.',row:pledgeRow,scrollTo:'#pledgeSearch'});
+const matchText=(r,t)=>!t||Object.values(r).join(' ').toLowerCase().includes(t);
+function applySearch(keepPage){ const t=(qs('#pledgeSearch').value||'').trim().toLowerCase(); pledgePager.set(rows.filter(r=>matchText(r,t)),keepPage===true); }
+async function load(){ clearAlert(qs('#pageAlert')); const d=await req(cfg.endpoint+'?action=list&status='+encodeURIComponent(qs('#pledgeStatusFilter').value)+'&year='+encodeURIComponent(qs('#pledgeYearFilter').value)+'&type='+encodeURIComponent(qs('#pledgeTypeFilter').value)+'&overdue='+(overdueOnly?'1':'0')); if(!d.success) throw new Error(d.message||'Failed to load pledges.'); rows=d.items||[]; renderStats(d.stats||{}); applySearch(true); if(detail&&isOpen('#statModal')) refreshDetail(true).catch(err=>alertBox(qs('#statAlert'),err.message,'error')); }
+
+// ---- Statistics card lists: each card opens the pledges (or payments) behind its number ----
+let detail=null, detailItems=[];
+const PLEDGE_HEAD='<tr><th>#</th><th>Pledge No</th><th>Member</th><th>Project/Reason</th><th>Pledged</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th>Actions</th></tr>';
+const PAYMENT_HEAD='<tr><th>#</th><th>Date Paid</th><th>Receipt</th><th>Member</th><th>Pledge No</th><th>Purpose</th><th>Amount</th><th>Method</th><th>Actions</th></tr>';
+const notCancelled=r=>r.status!=='Cancelled';
+const DETAILS={
+  total:{title:'Total Pledged',icon:'fa-hand-holding-heart',filter:notCancelled},
+  paid:{title:'Total Paid',icon:'fa-coins',note:'Pledges with at least one payment.',filter:r=>notCancelled(r)&&Number(r.amount_paid||0)>0},
+  Pending:{title:'Pending Pledges',icon:'fa-clock',filter:r=>r.status==='Pending',lockStatus:true},
+  Partial:{title:'Partially Paid Pledges',icon:'fa-adjust',filter:r=>r.status==='Partial',lockStatus:true},
+  Fulfilled:{title:'Fulfilled Pledges',icon:'fa-check-circle',filter:r=>r.status==='Fulfilled',lockStatus:true},
+  overdue:{title:'Overdue Pledges',icon:'fa-exclamation-triangle',note:'Pending or partly paid pledges past their due date.',filter:isOverdue},
+  year:{title:'Pledged in',icon:'fa-calendar-day'},
+  month:{title:'Payments Received',icon:'fa-calendar-check',payments:true}
+};
+function mainFilterNote(){ const parts=[]; const y=qs('#pledgeYearFilter').value, t=qs('#pledgeTypeFilter'), s=qs('#pledgeStatusFilter').value; if(y)parts.push('year '+y); if(t.value)parts.push(t.selectedOptions[0].textContent); if(s)parts.push(s); return parts.length?'Using the page filters: '+parts.join(', ')+'.':'All years and pledge types.'; }
+function paymentRow(p,n){ const purpose=p.purpose||p.project_name||p.pledge_reason||'General Pledge'; return `<tr><td>${n}</td><td>${esc(p.paid_on)}</td><td>${esc(p.receipt_no||'—')}</td><td>${esc(p.full_name||'—')}<br><small>${esc(p.member_no||'')}</small></td><td><b>${esc(p.pledge_no)}</b></td><td>${esc(purpose)}</td><td>${money(p.amount)}</td><td>${esc(p.method||'—')}</td><td><div class="table-action"><a class="btn btn-sm btn-primary btn-icon" href="receipt.php?payment_id=${Number(p.id)}" target="_blank" title="Receipt"><i class="fas fa-receipt"></i></a><button class="btn btn-sm btn-info btn-icon" data-action="view" data-id="${Number(p.pledge_id)}" title="View pledge"><i class="fas fa-eye"></i></button></div></td></tr>`; }
+const statPager=createPager({tbody:'#statTbody',summary:'#statPageSummary',nav:'#statPager',size:'#statPageSize',cols:()=>detail&&DETAILS[detail.kind].payments?9:10,empty:'Nothing to show for this selection.',row:(r,n)=>detail&&DETAILS[detail.kind].payments?paymentRow(r,n):pledgeRow(r,n)});
+async function refreshDetail(keepPage){
+  const def=DETAILS[detail.kind]; if(!keepPage) clearAlert(qs('#statAlert'));
+  if(def.payments){ const month=qs('#statMonth').value; const d=await req(cfg.endpoint+'?action=payments&month='+encodeURIComponent(month)); if(!d.success) throw new Error(d.message||'Could not load payments.'); detailItems=d.items||[]; const label=new Date((d.month||month)+'-01T00:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'}); qs('#statTitle').innerHTML=`<i class="fas ${def.icon}"></i> ${esc(def.title+' — '+label)}`; qs('#statSubtitle').textContent='Payments recorded in the selected month (cancelled pledges excluded).'; }
+  else if(detail.kind==='year'){ const d=await req(cfg.endpoint+'?action=list&year='+encodeURIComponent(detail.year)); if(!d.success) throw new Error(d.message||'Could not load pledges.'); detailItems=(d.items||[]).filter(notCancelled); qs('#statSubtitle').textContent='All pledge types; cancelled pledges excluded.'; }
+  else { detailItems=rows.filter(def.filter); qs('#statSubtitle').textContent=[def.note,mainFilterNote()].filter(Boolean).join(' '); }
+  const types=[...new Set(detailItems.map(r=>r.purpose||r.project_name||r.pledge_reason||'General Pledge'))].sort(); const typeSel=qs('#statType'), prevType=typeSel.value;
+  typeSel.innerHTML='<option value="">All purposes</option>'+types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join(''); typeSel.value=types.includes(prevType)?prevType:'';
+  applyDetailFilter(keepPage);
+}
+function applyDetailFilter(keepPage){
+  const def=DETAILS[detail.kind], t=(qs('#statSearch').value||'').trim().toLowerCase(), st=qs('#statStatus').value, ty=qs('#statType').value, me=qs('#statMethod').value;
+  const list=detailItems.filter(r=>matchText(r,t)&&(def.payments||!st||r.status===st)&&(!ty||(r.purpose||r.project_name||r.pledge_reason||'General Pledge')===ty)&&(!def.payments||!me||r.method===me));
+  const sum=k=>list.reduce((a,r)=>a+Number(r[k]||0),0);
+  qs('#statSummary').innerHTML=def.payments
+    ?`<span><b>${list.length.toLocaleString()}</b> payment${list.length===1?'':'s'}</span><span>Total received: <b>${money(sum('amount'))}</b></span><span>Members: <b>${new Set(list.map(r=>r.pledge_no)).size.toLocaleString()}</b></span>`
+    :`<span><b>${list.length.toLocaleString()}</b> pledge${list.length===1?'':'s'}</span><span>Pledged: <b>${money(sum('amount_pledged'))}</b></span><span>Paid: <b>${money(sum('amount_paid'))}</b></span><span>Balance: <b>${money(sum('amount_pledged')-sum('amount_paid'))}</b></span>`;
+  statPager.set(list,keepPage===true);
+}
+async function openDetail(card){
+  const kind=card.dataset.detail, def=DETAILS[kind]; if(!def)return;
+  detail={kind,year:card.dataset.year||''};
+  qs('#statSearch').value=''; qs('#statStatus').value=''; qs('#statType').value=''; qs('#statMethod').value='';
+  if(def.payments) qs('#statMonth').value=qs('#statMonth').max;
+  qs('#statHead').innerHTML=def.payments?PAYMENT_HEAD:PLEDGE_HEAD;
+  qs('#statStatus').style.display=def.payments||def.lockStatus?'none':''; qs('#statMonth').style.display=def.payments?'':'none'; qs('#statMethod').style.display=def.payments?'':'none';
+  qs('#statSearch').placeholder=def.payments?'Search member, pledge no, receipt...':'Search member, pledge no, purpose...';
+  if(!def.payments) qs('#statTitle').innerHTML=`<i class="fas ${def.icon}"></i> ${esc(kind==='year'?def.title+' '+detail.year:def.title)}`;
+  qs('#statSummary').innerHTML=''; qs('#statTbody').innerHTML=`<tr><td colspan="${def.payments?9:10}" class="text-center text-muted">Loading...</td></tr>`;
+  openModal('#statModal');
+  try{ await refreshDetail(false); }catch(err){ alertBox(qs('#statAlert'),err.message,'error'); }
+}
+qsa('.stat-card-click').forEach(card=>card.addEventListener('click',()=>openDetail(card)));
+qs('#statSearch').addEventListener('input',()=>applyDetailFilter(false));
+['#statStatus','#statType','#statMethod'].forEach(s=>qs(s).addEventListener('change',()=>applyDetailFilter(false)));
+qs('#statMonth').addEventListener('change',()=>{ if(qs('#statMonth').value) refreshDetail(false).catch(err=>alertBox(qs('#statAlert'),err.message,'error')); });
 function showMemberPledgeNo(){ const opt=qs('#member_id').selectedOptions[0]; const no=opt&&opt.value?(opt.dataset.pledgeNo||''):''; qs('#memberPledgeNo').value=no; qs('#memberPledgeNoHelp').textContent=opt&&opt.value&&!no?'This member has no pledge number yet. Set it in Members before saving.':"Taken from the member's record."; qs('#memberPledgeNoHelp').className=opt&&opt.value&&!no?'text-danger':'text-muted'; }
 qs('#member_id').addEventListener('change',showMemberPledgeNo);
 // Member search: narrows the member list by name, member no or pledge no, and picks the member when the match is unique or exact.
@@ -167,28 +306,27 @@ if(qs('#pledge_type')) qs('#pledge_type').addEventListener('change',syncPledgeTy
 function resetForm(){ qs('#pledgeForm').reset(); filterMembers(''); qs('#pledgeId').value=''; if(qs('#pledge_year')) qs('#pledge_year').value=new Date().getFullYear(); syncPledgeType(); qs('#pledgeFormTitle').innerHTML='<i class="fas fa-handshake"></i> Record Pledge'; clearAlert(qs('#formAlert')); }
 async function openView(id){ const d=await req(cfg.endpoint+'?action=get&id='+encodeURIComponent(id)); if(!d.success) return alertBox(qs('#pageAlert'),d.message||'Not found','error'); const p=d.item; const purpose=p.purpose||p.project_name||p.pledge_reason||'General Pledge'; qs('#viewBox').innerHTML=[['Pledge No',p.pledge_no],['Member',p.full_name],['Pledge For',p.pledge_type||'—'],['Purpose',purpose],['Amount Pledged',money(p.amount_pledged)],['Amount Paid',money(p.amount_paid)],['Balance',money(Number(p.amount_pledged||0)-Number(p.amount_paid||0))],['Pledge Date',p.pledge_date],['Due Date',p.due_date||'—'],['Status',p.status],['Email',p.email||'—'],['Phone',p.phone||'—'],['Notes',p.notes||'—']].map(x=>`<div class="detail-item"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join(''); const payments=d.payments||[]; viewPledge=p; viewPayments={}; payments.forEach(pay=>{viewPayments[pay.id]=pay;}); qs('#viewPayBtn').style.display=(p.status!=='Cancelled'&&Number(p.amount_pledged||0)-Number(p.amount_paid||0)>0)?'':'none'; qs('#paymentRows').innerHTML=payments.length?payments.map(pay=>`<tr><td>${esc(pay.paid_on)}</td><td>${esc(pay.receipt_no||'—')}</td><td>${money(pay.amount)}</td><td>${esc(pay.method||'—')}</td><td><a class="btn btn-sm btn-primary" href="receipt.php?payment_id=${Number(pay.id)}" target="_blank"><i class="fas fa-receipt"></i> Receipt</a> <button class="btn btn-sm btn-outline" data-action="email_receipt" data-payment-id="${Number(pay.id)}" title="Email receipt"><i class="fas fa-envelope"></i></button> <button class="btn btn-sm btn-warning" data-action="edit_payment" data-payment-id="${Number(pay.id)}" title="Edit payment"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" data-action="delete_payment" data-payment-id="${Number(pay.id)}" data-receipt="${esc(pay.receipt_no||'')}" title="Delete payment"><i class="fas fa-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="5" class="text-muted">No payments recorded.</td></tr>'; openModal('#pledgeViewModal'); }
 async function openEdit(id){ const d=await req(cfg.endpoint+'?action=get&id='+encodeURIComponent(id)); if(!d.success) return alertBox(qs('#pageAlert'),d.message||'Not found','error'); const p=d.item; resetForm(); qs('#pledgeId').value=p.id; qs('#member_id').value=p.member_id||''; showMemberPledgeNo(); qs('#project_id').value=p.project_id||''; if(qs('#pledge_type')){ qs('#pledge_type').value=p.pledge_type||''; qs('#pledge_year').value=p.pledge_year||new Date().getFullYear(); qs('#event_id').value=p.event_id||''; } qs('#pledge_reason').value=p.pledge_reason||''; qs('#amount_pledged').value=p.amount_pledged||''; qs('#pledge_date').value=p.pledge_date||''; qs('#due_date').value=p.due_date||''; qs('#status').value=p.status||'Pending'; qs('#notes').value=p.notes||''; syncPledgeType(); qs('#pledgeFormTitle').innerHTML='<i class="fas fa-edit"></i> Edit Pledge'; openModal('#pledgeFormModal'); }
- qs('#viewPayBtn').addEventListener('click',()=>{ if(!viewPledge)return; const balance=Number(viewPledge.amount_pledged||0)-Number(viewPledge.amount_paid||0); payMode(false); qs('#payPledgeId').value=viewPledge.id; qs('#payAmount').max=balance; qs('#paySummary').textContent='Pledge: '+(viewPledge.pledge_no||'')+' | Balance: '+money(balance); closeModals(); openModal('#pledgePayModal'); });
+ qs('#viewPayBtn').addEventListener('click',()=>{ if(!viewPledge)return; const balance=Number(viewPledge.amount_pledged||0)-Number(viewPledge.amount_paid||0); payMode(false); qs('#payPledgeId').value=viewPledge.id; qs('#payAmount').max=balance; qs('#paySummary').textContent='Pledge: '+(viewPledge.pledge_no||'')+' | Balance: '+money(balance); closeModal(qs('#pledgeViewModal')); openModal('#pledgePayModal'); });
 qs('#btnAddPledge').addEventListener('click',()=>{resetForm();openModal('#pledgeFormModal');});
- qs('#pledgeBackdrop').addEventListener('click',closeModals); qsa('[data-close-pledge]').forEach(b=>b.addEventListener('click',closeModals)); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals();});
+ qs('#pledgeBackdrop').addEventListener('click',closeModals); qsa('[data-close-pledge]').forEach(b=>b.addEventListener('click',()=>closeModal(b.closest('.app-modal')))); document.addEventListener('keydown',e=>{ if(e.key!=='Escape')return; const open=qsa('.app-modal.show'); closeModal(open[open.length-1]); });
  qs('#btnImportPledges').addEventListener('click',()=>{qs('#pledgeImportForm').reset();clearAlert(qs('#importAlert'));openModal('#pledgeImportModal');});
   function downloadCsv(filename,rows){const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));a.download=filename;a.click();URL.revokeObjectURL(a.href);}
   qs('#pledgeImportForm').addEventListener('submit',async e=>{e.preventDefault();const btn=qs('#importSubmit');btn.disabled=true;try{const fd=new FormData(e.currentTarget);fd.append('action','prepare_pledges');const d=await req(cfg.endpoint,{method:'POST',body:fd});if(!d.success)return alertBox(qs('#importAlert'),d.message,'error');const year=d.year||'annual';downloadCsv('missing_members_'+year+'.csv',d.missing_members||[]);downloadCsv('paid_pledges_'+year+'.csv',d.paid_entries||[]);closeModals();let msg=d.message||'Files prepared.';if(d.skipped&&d.skipped.length)msg+=' Review: '+d.skipped.slice(0,5).join(' | ');alertBox(qs('#pageAlert'),msg,d.skipped&&d.skipped.length?'error':'success');}catch(err){alertBox(qs('#importAlert'),err.message,'error');}finally{btn.disabled=false;}});
   qs('#btnUploadPaidCsv').addEventListener('click',()=>{qs('#paidCsvForm').reset();clearAlert(qs('#paidCsvAlert'));openModal('#paidCsvModal');});
   qs('#paidCsvForm').addEventListener('submit',async e=>{e.preventDefault();const btn=qs('#paidCsvSubmit');btn.disabled=true;try{const fd=new FormData(e.currentTarget);fd.append('action','import_prepared_paid_csv');const d=await req(cfg.endpoint,{method:'POST',body:fd});const skipped=d.skipped||[];const msg=(d.message||'')+(skipped.length?'\n\nRows not imported:\n• '+skipped.join('\n• '):'');if(!d.success)return alertBox(qs('#paidCsvAlert'),msg,'error');closeModals();alertBox(qs('#pageAlert'),msg,skipped.length?'error':'success');await load();}catch(err){alertBox(qs('#paidCsvAlert'),err.message,'error');}finally{btn.disabled=false;}});
- qs('#pledgeSearch').addEventListener('input',applySearch); ['#pledgeYearFilter','#pledgeTypeFilter','#pledgeStatusFilter'].forEach(s=>qs(s).addEventListener('change',()=>{overdueOnly=false;load().catch(err=>alertBox(qs('#pageAlert'),err.message,'error'));}));
+ qs('#pledgeSearch').addEventListener('input',()=>applySearch(false)); ['#pledgeYearFilter','#pledgeTypeFilter','#pledgeStatusFilter'].forEach(s=>qs(s).addEventListener('change',()=>{overdueOnly=false;load().catch(err=>alertBox(qs('#pageAlert'),err.message,'error'));}));
  qs('#btnRefreshPledges').addEventListener('click',()=>{qs('#pledgeSearch').value='';qs('#pledgeYearFilter').value='';qs('#pledgeTypeFilter').value='';qs('#pledgeStatusFilter').value='';overdueOnly=false;load().catch(err=>alertBox(qs('#pageAlert'),err.message,'error'));});
- qsa('.stat-card-click').forEach(card=>card.addEventListener('click',()=>{overdueOnly=card.dataset.statAction==='overdue';if(card.dataset.statStatus)qs('#pledgeStatusFilter').value=card.dataset.statStatus;else if(card.dataset.statAction==='all'||card.dataset.statYear||overdueOnly)qs('#pledgeStatusFilter').value='';if(card.dataset.statYear){qs('#pledgeYearFilter').value=card.dataset.statYear;qs('#pledgeTypeFilter').value='';}load().catch(err=>alertBox(qs('#pageAlert'),err.message,'error'));}));
  const bulkRows=qs('#bulkPledgeRows');
  function addBulkRow(){const wrap=document.createElement('div');wrap.className='form-grid bulk-pledge-row';wrap.style.cssText='padding:12px 0;border-bottom:1px solid #e5e7eb;align-items:end';const opts=memberOptions.map(({el:o})=>`<option value="${Number(o.value)}">${esc(o.textContent)}</option>`).join('');wrap.innerHTML=`<div class="form-group"><label>Member</label><select class="form-control bulk-member" required><option value="">Select member</option>${opts}</select></div><div class="form-group"><label>Amount pledged</label><input type="number" class="form-control bulk-amount" min="0.01" step="0.01" required></div><div class="form-group"><label>Reason / purpose</label><input type="text" class="form-control bulk-reason" placeholder="General pledge"></div><div class="form-group"><label>Pledge date</label><input type="date" class="form-control bulk-date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="form-group"><label>Notes</label><input type="text" class="form-control bulk-notes"></div><div><button type="button" class="btn btn-sm btn-danger bulk-remove" title="Remove entry"><i class="fas fa-trash"></i></button></div>`;wrap.querySelector('.bulk-remove').addEventListener('click',()=>{if(bulkRows.children.length>1)wrap.remove();});bulkRows.appendChild(wrap);}
  qs('#btnBulkPledges').addEventListener('click',()=>{bulkRows.innerHTML='';addBulkRow();clearAlert(qs('#bulkPledgeAlert'));openModal('#bulkPledgeModal');});
  qs('#addBulkPledgeRow').addEventListener('click',addBulkRow);
- qs('#bulkPledgeForm').addEventListener('submit',async e=>{e.preventDefault();const entries=qsa('.bulk-pledge-row',bulkRows).map(r=>({member_id:r.querySelector('.bulk-member').value,amount_pledged:r.querySelector('.bulk-amount').value,pledge_reason:r.querySelector('.bulk-reason').value,pledge_date:r.querySelector('.bulk-date').value,notes:r.querySelector('.bulk-notes').value}));const fd=new FormData();fd.append('action','save_bulk');fd.append('entries',JSON.stringify(entries));try{const d=await req(cfg.endpoint,{method:'POST',body:fd});if(!d.success)return alertBox(qs('#bulkPledgeAlert'),d.message,'error');closeModals();alertBox(qs('#pageAlert'),d.message);await load();}catch(err){alertBox(qs('#bulkPledgeAlert'),err.message,'error');}});
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-action]'); if(!b)return; const a=b.dataset.action,id=b.dataset.id; if(a==='view')openView(id).catch(err=>alertBox(qs('#pageAlert'),err.message,'error')); if(a==='edit')openEdit(id).catch(err=>alertBox(qs('#pageAlert'),err.message,'error')); if(a==='pay'){ payMode(false); qs('#payPledgeId').value=id; qs('#payAmount').max=b.dataset.balance||''; qs('#paySummary').textContent='Pledge: '+(b.dataset.name||'')+' | Balance: '+money(b.dataset.balance||0); clearAlert(qs('#payAlert')); openModal('#pledgePayModal'); } if(a==='delete'){ qs('#deleteId').value=id; qs('#deleteName').textContent=b.dataset.name||'this pledge'; clearAlert(qs('#deleteAlert')); openModal('#pledgeDeleteModal'); } if(a==='edit_payment'){ const pay=viewPayments[b.dataset.paymentId]; if(!pay||!viewPledge)return; payMode(true); qs('#payPaymentId').value=pay.id; qs('#payPledgeId').value=viewPledge.id; qs('#payAmount').value=pay.amount; qs('#payDate').value=pay.paid_on||''; qs('#payMethod').value=pay.method||'Cash'; qs('#payNotes').value=pay.notes||''; const room=Number(viewPledge.amount_pledged||0)-Number(viewPledge.amount_paid||0)+Number(pay.amount||0); qs('#payAmount').max=room; qs('#paySummary').textContent='Pledge: '+(viewPledge.pledge_no||'')+' | Receipt: '+(pay.receipt_no||pay.id)+' | Most this payment can be: '+money(room); closeModals(); openModal('#pledgePayModal'); }
- if(a==='delete_payment'){ if(!confirm('Delete payment '+(b.dataset.receipt||'')+'? The pledge balance will be recalculated.'))return; const fd=new FormData(); fd.append('action','delete_payment'); fd.append('payment_id',b.dataset.paymentId); req(cfg.endpoint,{method:'POST',body:fd}).then(async d=>{ if(!d.success)return alertBox(qs('#pageAlert'),d.message,'error'); closeModals(); alertBox(qs('#pageAlert'),d.message); await load(); if(d.pledge_id) await openView(d.pledge_id); }).catch(err=>alertBox(qs('#pageAlert'),err.message,'error')); }
+ qs('#bulkPledgeForm').addEventListener('submit',async e=>{e.preventDefault();const entries=qsa('.bulk-pledge-row',bulkRows).map(r=>({member_id:r.querySelector('.bulk-member').value,amount_pledged:r.querySelector('.bulk-amount').value,pledge_reason:r.querySelector('.bulk-reason').value,pledge_date:r.querySelector('.bulk-date').value,notes:r.querySelector('.bulk-notes').value}));const fd=new FormData();fd.append('action','save_bulk');fd.append('entries',JSON.stringify(entries));try{const d=await req(cfg.endpoint,{method:'POST',body:fd});if(!d.success)return alertBox(qs('#bulkPledgeAlert'),d.message,'error');closeModals();pageMsg(d.message);await load();}catch(err){alertBox(qs('#bulkPledgeAlert'),err.message,'error');}});
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-action]'); if(!b)return; const a=b.dataset.action,id=b.dataset.id; if(a==='view')openView(id).catch(err=>alertBox(qs('#pageAlert'),err.message,'error')); if(a==='edit')openEdit(id).catch(err=>alertBox(qs('#pageAlert'),err.message,'error')); if(a==='pay'){ payMode(false); qs('#payPledgeId').value=id; qs('#payAmount').max=b.dataset.balance||''; qs('#paySummary').textContent='Pledge: '+(b.dataset.name||'')+' | Balance: '+money(b.dataset.balance||0); clearAlert(qs('#payAlert')); openModal('#pledgePayModal'); } if(a==='delete'){ qs('#deleteId').value=id; qs('#deleteName').textContent=b.dataset.name||'this pledge'; clearAlert(qs('#deleteAlert')); openModal('#pledgeDeleteModal'); } if(a==='edit_payment'){ const pay=viewPayments[b.dataset.paymentId]; if(!pay||!viewPledge)return; payMode(true); qs('#payPaymentId').value=pay.id; qs('#payPledgeId').value=viewPledge.id; qs('#payAmount').value=pay.amount; qs('#payDate').value=pay.paid_on||''; qs('#payMethod').value=pay.method||'Cash'; qs('#payNotes').value=pay.notes||''; const room=Number(viewPledge.amount_pledged||0)-Number(viewPledge.amount_paid||0)+Number(pay.amount||0); qs('#payAmount').max=room; qs('#paySummary').textContent='Pledge: '+(viewPledge.pledge_no||'')+' | Receipt: '+(pay.receipt_no||pay.id)+' | Most this payment can be: '+money(room); closeModal(qs('#pledgeViewModal')); openModal('#pledgePayModal'); }
+ if(a==='delete_payment'){ if(!confirm('Delete payment '+(b.dataset.receipt||'')+'? The pledge balance will be recalculated.'))return; const fd=new FormData(); fd.append('action','delete_payment'); fd.append('payment_id',b.dataset.paymentId); req(cfg.endpoint,{method:'POST',body:fd}).then(async d=>{ if(!d.success)return alertBox(qs('#pageAlert'),d.message,'error'); closeModal(qs('#pledgeViewModal')); pageMsg(d.message); await load(); if(d.pledge_id) await openView(d.pledge_id); }).catch(err=>alertBox(qs('#pageAlert'),err.message,'error')); }
  if(a==='email_receipt'){ const fd=new FormData(); fd.append('action','send_receipt'); fd.append('payment_id',b.dataset.paymentId); req(cfg.endpoint,{method:'POST',body:fd}).then(d=>alertBox(qs('#pageAlert'),d.message,d.success?'success':'error')).catch(err=>alertBox(qs('#pageAlert'),err.message,'error')); }});
-qs('#pledgeForm').addEventListener('submit',async e=>{e.preventDefault(); try{const d=await post(e.currentTarget); if(!d.success)return alertBox(qs('#formAlert'),d.message,'error'); closeModals(); alertBox(qs('#pageAlert'),d.message); await load();}catch(err){alertBox(qs('#formAlert'),err.message,'error');}});
-qs('#payForm').addEventListener('submit',async e=>{e.preventDefault(); try{const editing=qs('#payAction').value==='update_payment'; const d=await post(e.currentTarget); if(!d.success)return alertBox(qs('#payAlert'),d.message,'error'); closeModals(); if(editing){ alertBox(qs('#pageAlert'),d.message); await load(); if(d.pledge_id) await openView(d.pledge_id); return; } alertBox(qs('#pageAlert'),d.message||'Payment saved'); if(d.payment_id){ const a=document.createElement('a'); a.href='receipt.php?payment_id='+Number(d.payment_id); a.target='_blank'; a.textContent='Open receipt'; qs('#pageAlert').append(' ',a); } await load();}catch(err){alertBox(qs('#payAlert'),err.message,'error');}});
-qs('#deleteForm').addEventListener('submit',async e=>{e.preventDefault(); try{const d=await post(e.currentTarget); if(!d.success)return alertBox(qs('#deleteAlert'),d.message,'error'); closeModals(); alertBox(qs('#pageAlert'),d.message); await load();}catch(err){alertBox(qs('#deleteAlert'),err.message,'error');}});
+qs('#pledgeForm').addEventListener('submit',async e=>{e.preventDefault(); try{const d=await post(e.currentTarget); if(!d.success)return alertBox(qs('#formAlert'),d.message,'error'); closeModal(qs('#pledgeFormModal')); pageMsg(d.message); await load();}catch(err){alertBox(qs('#formAlert'),err.message,'error');}});
+qs('#payForm').addEventListener('submit',async e=>{e.preventDefault(); try{const editing=qs('#payAction').value==='update_payment'; const d=await post(e.currentTarget); if(!d.success)return alertBox(qs('#payAlert'),d.message,'error'); closeModal(qs('#pledgePayModal')); if(editing){ pageMsg(d.message); await load(); if(d.pledge_id) await openView(d.pledge_id); return; } pageMsg(d.message||'Payment saved'); if(d.payment_id){ const a=document.createElement('a'); a.href='receipt.php?payment_id='+Number(d.payment_id); a.target='_blank'; a.textContent='Open receipt'; qs('#pageAlert').append(' ',a); } await load();}catch(err){alertBox(qs('#payAlert'),err.message,'error');}});
+qs('#deleteForm').addEventListener('submit',async e=>{e.preventDefault(); try{const d=await post(e.currentTarget); if(!d.success)return alertBox(qs('#deleteAlert'),d.message,'error'); closeModal(qs('#pledgeDeleteModal')); pageMsg(d.message); await load();}catch(err){alertBox(qs('#deleteAlert'),err.message,'error');}});
 qs('#btnSendReminders').addEventListener('click',async()=>{ if(!confirm('Send pledge reminders by email/SMS to all unpaid pledge members?'))return; const fd=new FormData(); fd.append('action','send_reminders'); try{const d=await req(cfg.endpoint,{method:'POST',body:fd}); alertBox(qs('#pageAlert'),`${d.message} Emails: ${d.emails_sent||0}, SMS: ${d.sms_sent||0}`,d.success?'success':'error');}catch(err){alertBox(qs('#pageAlert'),err.message,'error');} });
 load().catch(err=>alertBox(qs('#pageAlert'),err.message,'error'));
 })();
