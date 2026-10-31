@@ -395,7 +395,7 @@ function mapi_action_hymn(mysqli $conn): never
                 lyrics, copyright_status, copyright_notice
             FROM church_hymns WHERE id=? AND status='Published' LIMIT 1", 'i', [$id])
         : null;
-    if (!$hymn) mapi_fail(404, 'That hymn is not available.');
+    if (!$hymn) mapi_fail(404, 'That song is not available.');
     $hymn['id'] = (int)$hymn['id'];
     // Lyrics are only shown when a right to reproduce them was recorded.
     if ($hymn['copyright_status'] === 'Not Entered' || trim((string)$hymn['lyrics']) === '') {

@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
-$pageTitle = 'Order of Service';
+$pageTitle = 'Service Program';
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/_helpers.php';
 require_permission('member.worship.view');
 
-// Members only ever see published orders of service.
+// Members only ever see published service programs.
 $orders = mp_table($conn, 'service_orders')
  ? mp_rows($conn, "SELECT id, title, service_type, service_date, service_time, notes FROM service_orders WHERE status='Published' ORDER BY service_date DESC, service_time DESC, id DESC")
  : [];
@@ -32,10 +32,10 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <?php require_once __DIR__ . '/../includes/topbar.php'; ?>
 <div class="content-area member-module-page">
 <div class="member-module-header">
-  <div><h2><i class="fas fa-list-ol"></i> Order of Service</h2><p>Follow the service as it happens.</p></div>
+  <div><h2><i class="fas fa-list-ol"></i> Service Program</h2><p>Follow the service as it happens.</p></div>
 </div>
 <?php if (!$order): ?>
-  <div class="member-module-card"><div class="member-module-body"><div class="member-empty"><i class="fas fa-list-ol"></i>No order of service has been published yet.</div></div></div>
+  <div class="member-module-card"><div class="member-module-body"><div class="member-empty"><i class="fas fa-list-ol"></i>No service program has been published yet.</div></div></div>
 <?php else: ?>
 <form method="get" class="page-toolbar">
   <div class="page-toolbar-filters"><select name="id" aria-label="Service" onchange="this.form.submit()">

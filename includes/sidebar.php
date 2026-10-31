@@ -1055,7 +1055,7 @@ $memberId =
             $sidebarBaseUrl .
             'member/order-of-service.php',
             'fa-list-ol',
-            'Order of Service',
+            'Service Program',
             $dir,
             $cur,
             'order-of-service.php',
@@ -1067,7 +1067,7 @@ $memberId =
             $sidebarBaseUrl .
             'member/hymns.php',
             'fa-music',
-            'Church Hymns',
+            'Church Songs',
             $dir,
             $cur,
             'hymns.php',
@@ -1649,7 +1649,7 @@ $memberId =
             $sidebarBaseUrl .
             'worship_resources/order-of-service.php',
             'fa-list-ol',
-            'Order of Service',
+            'Service Program',
             $dir,
             $cur,
             'order-of-service.php',
@@ -1661,7 +1661,7 @@ $memberId =
             $sidebarBaseUrl .
             'worship_resources/hymns.php',
             'fa-music',
-            'Church Hymns',
+            'Church Songs',
             $dir,
             $cur,
             'hymns.php',

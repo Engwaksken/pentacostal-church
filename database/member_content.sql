@@ -118,9 +118,9 @@ INSERT INTO permissions(permission_key,permission_name,module_name) VALUES
 ('education_tips.manage','Create, edit, publish, unpublish and delete Education Department tips','Department Tips'),
 ('member.tips.view','View published Health and Education Department tips','Department Tips'),
 ('bible_verses.manage','Add, edit, publish and delete dashboard Bible verses','Worship Resources'),
-('order_of_service.manage','Add, edit, publish and delete Orders of Service','Worship Resources'),
+('order_of_service.manage','Add, edit, publish and delete Service Programs','Worship Resources'),
 ('hymns.manage','Add, edit, publish and delete hymns','Worship Resources'),
-('member.worship.view','View published Orders of Service and hymns','Worship Resources')
+('member.worship.view','View published Service Programs and church songs','Worship Resources')
 ON DUPLICATE KEY UPDATE permission_name=VALUES(permission_name),module_name=VALUES(module_name);
 
 -- Optional example: give a dedicated leader role its department's rights (adjust role names to your users).

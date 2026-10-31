@@ -5,7 +5,7 @@ require_once '../includes/member-content-functions.php';
 requireLogin();
 require_permission('order_of_service.manage');
 
-$pageTitle = 'Order of Service';
+$pageTitle = 'Service Program';
 require_once '../includes/header.php';
 require_once '../includes/sidebar.php';
 require_once '../church_admin/common.php';
@@ -34,22 +34,22 @@ $recordFlags = JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP;
 <div class="main-content"><?php include '../includes/topbar.php'; ?><div class="content-area">
 <?php ce_show_flash(); ?>
 <div class="church-page-head">
-    <div><h2><i class="fas fa-list-ol"></i> Order of Service</h2><p>Publish the order of service so members can follow along. Members see published orders only.</p></div>
-    <?php if ($ready): ?><button type="button" class="btn btn-primary" id="addBtn"><i class="fas fa-plus"></i> Add Order of Service</button><?php endif; ?>
+    <div><h2><i class="fas fa-list-ol"></i> Service Program</h2><p>Publish the service program so members can follow along. Members see published programs only.</p></div>
+    <?php if ($ready): ?><button type="button" class="btn btn-primary" id="addBtn"><i class="fas fa-plus"></i> Add Service Program</button><?php endif; ?>
 </div>
 <?php mc_worship_tabs('order_of_service'); ?>
 
 <?php if (!$ready): ?>
-<div class="alert alert-warning"><strong>Setup required.</strong> Run <code>database/member_content.sql</code> to create the Order of Service and hymn tables.</div>
+<div class="alert alert-warning"><strong>Setup required.</strong> Run <code>database/member_content.sql</code> to create the Service Program and song tables.</div>
 <?php else: ?>
 <div class="church-stats">
-    <div class="church-stat"><div class="church-stat-icon"><i class="fas fa-list"></i></div><div><b><?= count($rows) ?></b><span>Total Orders</span></div></div>
+    <div class="church-stat"><div class="church-stat-icon"><i class="fas fa-list"></i></div><div><b><?= count($rows) ?></b><span>Total Programs</span></div></div>
     <div class="church-stat"><div class="church-stat-icon"><i class="fas fa-eye"></i></div><div><b><?= $publishedCount ?></b><span>Published</span></div></div>
     <div class="church-stat"><div class="church-stat-icon"><i class="fas fa-calendar"></i></div><div><b><?= $upcomingCount ?></b><span>Today &amp; Upcoming</span></div></div>
 </div>
 <div class="church-card">
     <div class="page-toolbar">
-        <div class="page-toolbar-search"><i class="fas fa-search"></i><input type="search" id="recordSearch" class="form-control" placeholder="Search orders of service..."></div>
+        <div class="page-toolbar-search"><i class="fas fa-search"></i><input type="search" id="recordSearch" class="form-control" placeholder="Search service programs..."></div>
         <div class="page-toolbar-actions"><button type="button" class="btn btn-outline-primary page-toolbar-refresh" id="refreshRecords"><i class="fas fa-rotate-right"></i> Refresh</button></div>
     </div>
     <div class="church-table-wrap"><table class="church-table">
@@ -77,7 +77,7 @@ $recordFlags = JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP;
                 </div></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="5" class="church-empty">No orders of service have been added yet.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><tr><td colspan="5" class="church-empty">No service programs have been added yet.</td></tr><?php endif; ?>
         </tbody>
     </table></div>
 </div>
@@ -86,11 +86,11 @@ $recordFlags = JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP;
 <div class="church-modal-backdrop" id="backdrop"></div>
 <div class="church-modal" id="formModal"><div class="church-modal-dialog church-modal-dialog-lg"><form method="post" action="process.php" id="recordForm">
     <input type="hidden" name="csrf_token" value="<?= ce_h(ce_csrf()) ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="resource" value="order_of_service"><input type="hidden" name="id" id="recordId">
-    <div class="church-modal-header"><h3 id="formTitle">Add Order of Service</h3><button type="button" class="church-modal-close js-close">&times;</button></div>
+    <div class="church-modal-header"><h3 id="formTitle">Add Service Program</h3><button type="button" class="church-modal-close js-close">&times;</button></div>
     <div class="church-modal-body"><div class="church-form">
         <div class="church-form-row">
-            <label>Title<input name="title" id="title" maxlength="200" placeholder="e.g. Second Sunday of Advent" required></label>
-            <label>Service Type<input name="service_type" id="service_type" maxlength="120" placeholder="e.g. Holy Communion, Morning Prayer"></label>
+            <label>Title<input name="title" id="title" maxlength="200" placeholder="e.g. Sunday Worship Service" required></label>
+            <label>Service Type<input name="service_type" id="service_type" maxlength="120" placeholder="e.g. Praise &amp; Worship, Revival, Communion"></label>
         </div>
         <div class="church-form-row">
             <label>Service Date<input type="date" name="service_date" id="service_date" required></label>
@@ -98,21 +98,21 @@ $recordFlags = JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP;
         </div>
         <label>Notes for Members<textarea name="notes" id="notes" rows="3" maxlength="5000"></textarea></label>
         <div>
-            <b>Service Items</b><small class="church-form-help">List each part of the service in order. Give readings by reference; link a hymn so members can open its study page.</small>
+            <b>Service Items</b><small class="church-form-help">List each part of the service in order. Give readings by reference; link a song so members can open its study page.</small>
             <div class="sos-items" id="itemsBox"></div>
             <button type="button" class="btn btn-sm btn-outline mt-2" id="addItem"><i class="fas fa-plus"></i> Add Item</button>
         </div>
         <label>Status<select name="status" id="status"><option value="Draft">Draft</option><option value="Published">Published</option></select></label>
     </div></div>
-    <div class="church-modal-footer"><button type="button" class="btn btn-outline js-close">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Order of Service</button></div>
+    <div class="church-modal-footer"><button type="button" class="btn btn-outline js-close">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Service Program</button></div>
 </form></div></div>
 <template id="itemTemplate">
     <div class="sos-item">
         <span class="sos-item-no"></span>
         <div class="sos-item-fields">
-            <input name="item_title[]" maxlength="200" placeholder="Item, e.g. Opening Hymn" required>
+            <input name="item_title[]" maxlength="200" placeholder="Item, e.g. Praise &amp; Worship" required>
             <input name="item_led_by[]" maxlength="180" placeholder="Led by (optional)">
-            <select name="item_hymn_id[]" class="full"><option value="">No linked hymn</option><?php foreach ($hymnLabels as $id => $label): ?><option value="<?= (int)$id ?>"><?= ce_h($label) ?></option><?php endforeach; ?></select>
+            <select name="item_hymn_id[]" class="full"><option value="">No linked song</option><?php foreach ($hymnLabels as $id => $label): ?><option value="<?= (int)$id ?>"><?= ce_h($label) ?></option><?php endforeach; ?></select>
             <textarea name="item_details[]" rows="2" maxlength="2000" class="full" placeholder="Details, e.g. reading reference or response (optional)"></textarea>
         </div>
         <div class="sos-item-tools">
@@ -122,10 +122,10 @@ $recordFlags = JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP;
         </div>
     </div>
 </template>
-<div class="church-modal" id="viewModal"><div class="church-modal-dialog church-modal-dialog-lg"><div class="church-modal-header"><h3>Order of Service</h3><button type="button" class="church-modal-close js-close">&times;</button></div><div class="church-modal-body"><div class="modal-detail-grid" id="details"></div></div><div class="church-modal-footer"><button type="button" class="btn btn-outline js-close">Close</button></div></div></div>
+<div class="church-modal" id="viewModal"><div class="church-modal-dialog church-modal-dialog-lg"><div class="church-modal-header"><h3>Service Program</h3><button type="button" class="church-modal-close js-close">&times;</button></div><div class="church-modal-body"><div class="modal-detail-grid" id="details"></div></div><div class="church-modal-footer"><button type="button" class="btn btn-outline js-close">Close</button></div></div></div>
 <div class="church-modal" id="deleteModal"><div class="church-modal-dialog church-modal-dialog-sm"><form method="post" action="process.php">
     <input type="hidden" name="csrf_token" value="<?= ce_h(ce_csrf()) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="resource" value="order_of_service"><input type="hidden" name="id" id="deleteId">
-    <div class="church-modal-header"><h3>Delete Order of Service</h3><button type="button" class="church-modal-close js-close">&times;</button></div>
+    <div class="church-modal-header"><h3>Delete Service Program</h3><button type="button" class="church-modal-close js-close">&times;</button></div>
     <div class="church-modal-body">Are you sure you want to delete <strong id="deleteName"></strong>?</div>
     <div class="church-modal-footer"><button type="button" class="btn btn-outline js-close">Cancel</button><button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</button></div>
 </form></div></div>
@@ -147,13 +147,13 @@ function addItem(item = {}) {
 }
 $('#addItem')?.addEventListener('click', () => addItem());
 mcBindTable({
-    addTitle: 'Add Order of Service', editTitle: 'Edit Order of Service', fields: ['title', 'service_type', 'service_date', 'service_time', 'notes', 'status'],
+    addTitle: 'Add Service Program', editTitle: 'Edit Service Program', fields: ['title', 'service_type', 'service_date', 'service_time', 'notes', 'status'],
     onReset: () => { $('#itemsBox').replaceChildren(); },
     onEdit: r => (r.items || []).forEach(addItem),
     view: r => {
         const fields = {'Title': r.title, 'Service Type': r.service_type, 'Date': r.service_date, 'Time': r.service_time, 'Status': r.status, 'Notes': r.notes};
         (r.items || []).forEach((it, i) => {
-            const parts = [it.led_by ? 'Led by ' + it.led_by : '', it.hymn_id && hymnLabels[it.hymn_id] ? 'Hymn: ' + hymnLabels[it.hymn_id] : '', it.details].filter(Boolean);
+            const parts = [it.led_by ? 'Led by ' + it.led_by : '', it.hymn_id && hymnLabels[it.hymn_id] ? 'Song: ' + hymnLabels[it.hymn_id] : '', it.details].filter(Boolean);
             fields[(i + 1) + '. ' + it.title] = parts.join('\n');
         });
         return fields;

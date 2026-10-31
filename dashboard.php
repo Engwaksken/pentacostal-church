@@ -89,8 +89,8 @@ if ($isMember) {
                 <a href="<?= h(BASE_URL.'member/events.php') ?>"><i class="fas fa-calendar-alt"></i><span>Church Events</span></a>
                 <a href="<?= h(BASE_URL.'member/event-certificates.php') ?>"><i class="fas fa-certificate"></i><span>Event Certificates (<?= number_format($eventCertificateCount) ?>)</span></a>
                 <a href="<?= h(BASE_URL.'member/projects.php') ?>"><i class="fas fa-project-diagram"></i><span>Projects</span></a>
-                <a href="<?= h(BASE_URL.'member/order-of-service.php') ?>"><i class="fas fa-list-ol"></i><span>Order of Service</span></a>
-                <a href="<?= h(BASE_URL.'member/hymns.php') ?>"><i class="fas fa-music"></i><span>Church Hymns</span></a>
+                <a href="<?= h(BASE_URL.'member/order-of-service.php') ?>"><i class="fas fa-list-ol"></i><span>Service Program</span></a>
+                <a href="<?= h(BASE_URL.'member/hymns.php') ?>"><i class="fas fa-music"></i><span>Church Songs</span></a>
                 <a href="<?= h(BASE_URL.'member/tips.php?dept=health') ?>"><i class="fas fa-heart-pulse"></i><span>Health Tips</span></a>
                 <a href="<?= h(BASE_URL.'member/tips.php?dept=education') ?>"><i class="fas fa-graduation-cap"></i><span>Education Tips</span></a>
                 <a href="<?= h(BASE_URL.'member/profile.php') ?>"><i class="fas fa-user-circle"></i><span>My Profile</span></a>

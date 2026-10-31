@@ -51,9 +51,9 @@ function wr_save_verse(mysqli $conn, ?array $existing, string $status, ?string $
 function wr_save_hymn(mysqli $conn, ?array $existing, string $status, ?string $publishedAt, int $uid): void
 {
     $v = [
-        'hymn_number' => mc_post_text('hymn_number', 'Hymn number', 20),
+        'hymn_number' => mc_post_text('hymn_number', 'Song number', 20),
         'title' => mc_post_text('title', 'Title', 200, true),
-        'hymn_book' => mc_post_text('hymn_book', 'Hymn book', 150),
+        'hymn_book' => mc_post_text('hymn_book', 'Song book', 150),
         'language' => mc_post_text('language', 'Language', 80),
         'author' => mc_post_text('author', 'Author', 180),
         'tune' => mc_post_text('tune', 'Tune', 180),
@@ -99,7 +99,7 @@ function wr_posted_items(mysqli $conn): array
     $ledBy = (array)($_POST['item_led_by'] ?? []);
     $details = (array)($_POST['item_details'] ?? []);
     $hymnIds = (array)($_POST['item_hymn_id'] ?? []);
-    if (count($titles) > 100) throw new RuntimeException('An Order of Service can have at most 100 items.');
+    if (count($titles) > 100) throw new RuntimeException('An Service Program can have at most 100 items.');
 
     $validHymns = [];
     foreach (ce_query_all($conn, 'SELECT id FROM church_hymns') as $h) $validHymns[(int)$h['id']] = true;
@@ -116,7 +116,7 @@ function wr_posted_items(mysqli $conn): array
         $n = $i + 1;
         if ($item['title'] === '') throw new RuntimeException("Service item $n needs a title.");
         if (mb_strlen($item['title']) > 200 || mb_strlen($item['led_by']) > 180 || mb_strlen($item['details']) > 2000) throw new RuntimeException("Service item $n is too long.");
-        if ($item['hymn_id'] !== 0 && !isset($validHymns[$item['hymn_id']])) throw new RuntimeException("Service item $n links to a hymn that no longer exists.");
+        if ($item['hymn_id'] !== 0 && !isset($validHymns[$item['hymn_id']])) throw new RuntimeException("Service item $n links to a song that no longer exists.");
         $items[] = $item;
     }
     return $items;
@@ -173,7 +173,7 @@ try {
     if (!mc_tables_ready($conn, array_values(WR_TABLES))) throw new RuntimeException('Run database/member_content.sql first.');
     $action = (string)($_POST['action'] ?? '');
     $uid = ce_user_id();
-    $label = ['verses' => 'Bible verse', 'order_of_service' => 'Order of Service', 'hymns' => 'Hymn'][$resource];
+    $label = ['verses' => 'Bible verse', 'order_of_service' => 'Service Program', 'hymns' => 'Song'][$resource];
 
     if ($action === 'save') {
         $id = (int)($_POST['id'] ?? 0);
