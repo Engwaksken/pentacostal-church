@@ -273,24 +273,6 @@ if (!function_exists('ce_departments')) {
     }
 }
 
-if (!function_exists('ce_zones')) {
-    function ce_zones(mysqli $conn): array
-    {
-        if (!ce_table_exists($conn, 'church_zones')) {
-            return [];
-        }
-
-        return ce_query_all(
-            $conn,
-            "SELECT id, zone_name AS name, zone_code, status
-             FROM church_zones
-             WHERE zone_name IS NOT NULL
-               AND TRIM(zone_name) <> ''
-             ORDER BY zone_name ASC"
-        );
-    }
-}
-
 if (!function_exists('ce_attach_departments')) {
     function ce_attach_departments(
         mysqli $conn,

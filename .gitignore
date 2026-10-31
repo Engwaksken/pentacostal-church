@@ -25,3 +25,6 @@ Thumbs.db
 # Server PHP settings created by cPanel (MultiPHP INI Editor)
 /.user.ini
 /php.ini
+
+# Firebase service account for member app push notifications
+/config/firebase-service-account.json

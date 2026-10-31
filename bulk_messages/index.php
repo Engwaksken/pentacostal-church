@@ -64,26 +64,6 @@ if (empty($_SESSION['csrf_token'])) {
 
 $csrfToken = $_SESSION['csrf_token'];
 
-$zones = [];
-
-if (bm_table_exists($conn, 'church_zones')) {
-    $zoneTable = 'church_zones';
-    $nameCol = bm_col_exists($conn, $zoneTable, 'zone_name') ? 'zone_name' : (bm_col_exists($conn, $zoneTable, 'name') ? 'name' : 'id');
-
-    $res = $conn->query("SELECT id, `$nameCol` AS zone_name FROM `$zoneTable` ORDER BY `$nameCol` ASC");
-    while ($res && $row = $res->fetch_assoc()) {
-        $zones[] = $row;
-    }
-} elseif (bm_table_exists($conn, 'zones')) {
-    $zoneTable = 'zones';
-    $nameCol = bm_col_exists($conn, $zoneTable, 'zone_name') ? 'zone_name' : (bm_col_exists($conn, $zoneTable, 'name') ? 'name' : 'id');
-
-    $res = $conn->query("SELECT id, `$nameCol` AS zone_name FROM `$zoneTable` ORDER BY `$nameCol` ASC");
-    while ($res && $row = $res->fetch_assoc()) {
-        $zones[] = $row;
-    }
-}
-
 $departments = [];
 
 if (bm_table_exists($conn, 'departments') && bm_table_exists($conn, 'department_members')) {
@@ -103,7 +83,7 @@ if (bm_table_exists($conn, 'departments') && bm_table_exists($conn, 'department_
         <div class="page-header">
             <div>
                 <h2><i class="fas fa-paper-plane text-primary"></i> Bulk Email & SMS</h2>
-                <p>Send announcements to members, zones, departments, youth, teachers, and parents.</p>
+                <p>Send announcements to members, departments, youth, teachers, and parents.</p>
             </div>
         </div>
 
@@ -163,21 +143,10 @@ if (bm_table_exists($conn, 'departments') && bm_table_exists($conn, 'department_
                                 <label>Recipient Group <span class="req">*</span></label>
                                 <select name="recipient_group" id="recipientGroup" class="form-control" required>
                                     <option value="all">All Active Members</option>
-                                    <option value="zone">By Church Zone</option>
                                     <option value="department">By Department</option>
                                     <option value="youth">Youth</option>
                                     <option value="sunday_school_teachers">Sunday School Teachers</option>
                                     <option value="sunday_school_parents">Sunday School Children Parents</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group" id="zoneWrap" style="display:none;">
-                                <label>Church Zone <span class="req">*</span></label>
-                                <select name="zone_id" id="zone_id" class="form-control">
-                                    <option value="0">-- Select Zone --</option>
-                                    <?php foreach ($zones as $z): ?>
-                                        <option value="<?= (int)$z['id']; ?>"><?= bm_h($z['zone_name']); ?></option>
-                                    <?php endforeach; ?>
                                 </select>
                             </div>
 
@@ -389,14 +358,8 @@ window.BulkMessagingConfig = {
         }
     }
 
-    function toggleZone() {
-        const wrap = qs('#zoneWrap');
+    function toggleAudienceFields() {
         const group = qs('#recipientGroup');
-
-        if (wrap && group) {
-            wrap.style.display = group.value === 'zone' ? '' : 'none';
-        }
-
         const deptWrap = qs('#departmentWrap');
         if (deptWrap && group) {
             deptWrap.style.display = group.value === 'department' ? '' : 'none';
@@ -562,14 +525,7 @@ window.BulkMessagingConfig = {
     const recipientGroup = qs('#recipientGroup');
     if (recipientGroup) {
         recipientGroup.addEventListener('change', () => {
-            toggleZone();
-            previewRecipients().catch(err => showAlert(err.message, 'error'));
-        });
-    }
-
-    const zoneSelect = qs('#zone_id');
-    if (zoneSelect) {
-        zoneSelect.addEventListener('change', () => {
+            toggleAudienceFields();
             previewRecipients().catch(err => showAlert(err.message, 'error'));
         });
     }
@@ -627,7 +583,6 @@ window.BulkMessagingConfig = {
         const subject = qs('#subject')?.value.trim() || '';
         const message = qs('#message')?.value.trim() || '';
         const group = qs('#recipientGroup')?.value || 'all';
-        const zoneId = Number(qs('#zone_id')?.value || 0);
         const departmentId = Number(qs('#department_id')?.value || 0);
 
         if (channel === 'email' && !subject) {
@@ -637,11 +592,6 @@ window.BulkMessagingConfig = {
 
         if (!message) {
             showAlert('Message is required.', 'error');
-            return;
-        }
-
-        if (group === 'zone' && zoneId <= 0) {
-            showAlert('Please select a church zone.', 'error');
             return;
         }
 
@@ -717,7 +667,7 @@ window.BulkMessagingConfig = {
         }
     });
 
-    toggleZone();
+    toggleAudienceFields();
     setChannel('email');
     previewRecipients().catch(() => {});
 })();

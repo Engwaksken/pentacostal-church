@@ -61,7 +61,6 @@ function bm_ensure_tables(mysqli $conn): void {
         id INT AUTO_INCREMENT PRIMARY KEY,
         channel ENUM('email','sms') NOT NULL,
         recipient_group VARCHAR(80) NOT NULL,
-        zone_id INT NULL,
         department_id INT NULL,
         subject VARCHAR(190) NULL,
         message MEDIUMTEXT NOT NULL,
@@ -76,7 +75,7 @@ function bm_ensure_tables(mysqli $conn): void {
         completed_at DATETIME NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     if (!bm_col_exists($conn, 'bulk_message_campaigns', 'department_id')) {
-        $conn->query("ALTER TABLE bulk_message_campaigns ADD COLUMN department_id INT NULL AFTER zone_id");
+        $conn->query("ALTER TABLE bulk_message_campaigns ADD COLUMN department_id INT NULL AFTER recipient_group");
     }
 
     $conn->query("CREATE TABLE IF NOT EXISTS bulk_message_queue (
@@ -137,18 +136,10 @@ function bm_members(mysqli $conn, string $groupName = 'Member', string $extraWhe
     return bm_fetch_all($conn, $sql, 's' . $types, array_merge([$groupName], $params));
 }
 
-function bm_recipients(mysqli $conn, string $group, int $zoneId = 0, int $departmentId = 0): array {
+function bm_recipients(mysqli $conn, string $group, int $departmentId = 0): array {
     $items = [];
 
     if ($group === 'all') return bm_members($conn, 'All Members');
-
-    if ($group === 'zone') {
-        if ($zoneId <= 0) return [];
-        if (bm_col_exists($conn, 'members', 'zone_id')) {
-            return bm_members($conn, 'Church Zone', 'm.zone_id = ?', 'i', [$zoneId]);
-        }
-        return [];
-    }
 
     if ($group === 'department') {
         if ($departmentId <= 0 || !bm_table_exists($conn, 'department_members')) return [];
@@ -253,11 +244,10 @@ try {
 
     $action = bm_s($_POST['action'] ?? $_GET['action'] ?? 'preview');
     $group = bm_s($_POST['recipient_group'] ?? $_GET['recipient_group'] ?? 'all');
-    $zoneId = (int)($_POST['zone_id'] ?? $_GET['zone_id'] ?? 0);
     $departmentId = (int)($_POST['department_id'] ?? $_GET['department_id'] ?? 0);
 
     if ($action === 'preview') {
-        $items = bm_recipients($conn, $group, $zoneId, $departmentId);
+        $items = bm_recipients($conn, $group, $departmentId);
         bm_out(['success' => true, 'items' => $items]);
     }
 
@@ -269,12 +259,12 @@ try {
         if (!in_array($channel, ['email', 'sms'], true)) bm_out(['success' => false, 'message' => 'Invalid channel.']);
         if ($message === '') bm_out(['success' => false, 'message' => 'Message is required.']);
         if ($channel === 'email' && $subject === '') bm_out(['success' => false, 'message' => 'Email subject is required.']);
-        if ($group === 'zone' && $zoneId <= 0) bm_out(['success' => false, 'message' => 'Please select a church zone.']);
+        if (!in_array($group, ['all', 'department', 'youth', 'sunday_school_teachers', 'sunday_school_parents'], true)) bm_out(['success' => false, 'message' => 'Invalid recipient group.']);
         if ($group === 'department' && $departmentId <= 0) bm_out(['success' => false, 'message' => 'Please select a department.']);
 
         $selectedJson = bm_s($_POST['selected_recipients'] ?? '');
         $selectedRecipients = bm_decode_selected_recipients($selectedJson);
-        $recipients = $selectedRecipients ?: bm_recipients($conn, $group, $zoneId, $departmentId);
+        $recipients = $selectedRecipients ?: bm_recipients($conn, $group, $departmentId);
         if (!$recipients) bm_out(['success' => false, 'message' => 'No recipients found or selected.']);
 
         $createdBy = (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
@@ -282,8 +272,8 @@ try {
         $status = 'queued';
         $total = 0;
 
-        $stmt = $conn->prepare("INSERT INTO bulk_message_campaigns (channel, recipient_group, zone_id, department_id, subject, message, status, created_by, created_at, updated_at) VALUES (?, ?, NULLIF(?,0), NULLIF(?,0), ?, ?, ?, NULLIF(?,0), ?, ?)");
-        $stmt->bind_param('ssiisssiss', $channel, $group, $zoneId, $departmentId, $subject, $message, $status, $createdBy, $now, $now);
+        $stmt = $conn->prepare("INSERT INTO bulk_message_campaigns (channel, recipient_group, department_id, subject, message, status, created_by, created_at, updated_at) VALUES (?, ?, NULLIF(?,0), ?, ?, ?, NULLIF(?,0), ?, ?)");
+        $stmt->bind_param('ssisssiss', $channel, $group, $departmentId, $subject, $message, $status, $createdBy, $now, $now);
         $stmt->execute();
         $campaignId = (int)$conn->insert_id;
         $stmt->close();

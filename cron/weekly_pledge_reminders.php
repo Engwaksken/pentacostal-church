@@ -1,14 +1,9 @@
 <?php
 declare(strict_types=1);
 
-// Run weekly using cron, for example:
-// 0 8 * * MON /usr/bin/php /path/to/cron/weekly_pledge_reminders.php
+// Pledge reminders are now sent automatically by cron/member_notifications.php:
+// Saturday from 8 am (by each member's chosen channels) and a short push on Sunday from 7 am.
+// This job no longer sends anything, so members are not reminded twice; remove it from the crontab.
+// Admins can still send reminders by hand from the Pledges page.
 
-$_POST['action'] = 'send_reminders';
-$_REQUEST['action'] = 'send_reminders';
-
-ob_start();
-require_once __DIR__ . '/../pledges/process-pledges.php';
-$output = ob_get_clean();
-
-echo $output . PHP_EOL;
+echo "Pledge reminders now run from cron/member_notifications.php; remove this job from the crontab." . PHP_EOL;
