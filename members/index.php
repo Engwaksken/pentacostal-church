@@ -7,6 +7,10 @@ require_once '../includes/member-fields.php';
 if (!isset($conn) || !($conn instanceof mysqli)) die('Database connection not found.');
 $conn->set_charset('utf8mb4');
 
+// One-time: existing member numbers lose the year and usernames become member numbers (see the include).
+require_once '../includes/member-number-migration.php';
+$memberNumberMigration = member_numbers_migrate_once($conn);
+
 if (!function_exists('h'))       { function h($v)    { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); } }
 if (!function_exists('fmtDate')) { function fmtDate($v) { return empty($v)||strtotime((string)$v)===false?'-':date('d M Y',strtotime((string)$v)); } }
 if (!function_exists('bindParams')) {
@@ -217,6 +221,9 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
     </div>
 
     <?php if (function_exists('showFlash')) showFlash(); ?>
+    <?php if (!empty($memberNumberMigration['message'])): ?>
+    <div class="alert <?= $memberNumberMigration['ok'] ? 'alert-success' : 'alert-danger' ?>" style="margin-bottom:16px"><?= h($memberNumberMigration['message']) ?></div>
+    <?php endif; ?>
 
     <div id="memberAlertArea"></div>
 
