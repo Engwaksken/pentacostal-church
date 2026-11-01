@@ -1,0 +1,67 @@
+/* Narrower, consistent entry dialogs; long forms are split with form-tabs.js. */
+.church-modal,
+.modal-overlay,
+.app-modal,
+.ajax-modal,
+.member-modal-overlay,
+.member-display-modal,
+.cb-modal,
+.ca-modal,
+.attendance-modal,
+.contrib-modal,
+.expense-modal,
+.gs-modal,
+.ms-modal,
+.ss-modal,
+.tgv-modal,
+.gateway-modal,
+.member-payment-modal,
+.notebook-modal,
+.users-page .user-modal {
+    box-sizing: border-box;
+    justify-content: center !important;
+    align-items: center !important;
+    align-items: safe center !important;
+}
+
+.church-modal-dialog,
+.modal-overlay > .modal,
+.app-modal > .app-dialog,
+.ajax-modal > .ajax-dialog,
+.member-modal-overlay > .modal,
+.cb-modal-card,
+.ca-modal .ca-dialog,
+.attendance-modal .attendance-dialog,
+.contrib-modal .contrib-dialog,
+.expense-modal .expense-dialog,
+.gs-modal .gs-dialog,
+.ms-modal .ms-dialog,
+.ss-modal .ss-dialog,
+.tgv-modal .tgv-dialog,
+.gateway-modal .gateway-dialog,
+.member-payment-modal .member-payment-dialog,
+.notebook-modal .notebook-dialog,
+.users-page .user-modal .modal-card {
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+dialog[open] {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+}
+
+.church-modal-dialog,
+.church-modal-dialog-lg { width: min(760px, 100%); }
+.church-modal-dialog-sm { width: min(500px, 100%); }
+.church-modal-dialog-lg .church-modal-body { max-height: min(68vh, 680px); }
+.modal.modal-lg { width: min(760px, calc(100vw - 32px)); max-width: 760px; }
+.cb-modal-card { width: min(760px, calc(100vw - 32px)); max-width: 760px; max-height: calc(100vh - 32px); overflow: auto; }
+.birds-modal-dialog { width: min(740px, calc(100vw - 32px)); max-width: 740px; }
+@media (max-width: 640px) {
+    .church-modal { padding: 12px 8px; }
+    .church-modal-dialog, .church-modal-dialog-lg, .church-modal-dialog-sm,
+    .modal.modal-lg, .cb-modal-card, .birds-modal-dialog { width: 100%; max-width: 100%; }
+    .church-modal-dialog-lg .church-modal-body { max-height: calc(100dvh - 150px); }
+}

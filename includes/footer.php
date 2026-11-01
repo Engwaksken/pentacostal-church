@@ -3,6 +3,8 @@
 </div><!-- /.cms-layout -->
 <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/statistics.css?v=1">
 <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/form-tabs.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/form-tabs.css') ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/modal-forms.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/modal-forms.css') ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/content-bulk.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/content-bulk.css') ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bulk-delete.css?v=1">
 <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/accessibility.css?v=2">
 <div class="accessibility-widget" id="accessibilityWidget">
@@ -39,5 +41,6 @@
 <script src="<?= BASE_URL ?>assets/js/accessibility.js?v=3"></script>
 <script src="<?= BASE_URL ?>assets/js/bulk-delete.js?v=1"></script>
 <script src="<?= BASE_URL ?>assets/js/form-tabs.js?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/form-tabs.js') ?>"></script>
+<script src="<?= BASE_URL ?>assets/js/content-bulk.js?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/content-bulk.js') ?>"></script>
 </body>
 </html>

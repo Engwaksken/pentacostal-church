@@ -22,7 +22,7 @@ $fields = ['hymn_number', 'title', 'hymn_book', 'language', 'author', 'tune', 't
 <?php ce_show_flash(); ?>
 <div class="church-page-head">
     <div><h2><i class="fas fa-music"></i> Church Songs</h2><p>Song information members can read and study. Lyrics are optional and may only be entered when the church may reproduce them.</p></div>
-    <?php if ($ready): ?><button type="button" class="btn btn-primary" id="addBtn"><i class="fas fa-plus"></i> Add Song</button><?php endif; ?>
+    <?php if ($ready): ?><button type="button" class="btn btn-outline-primary" data-content-bulk="hymns"><i class="fas fa-layer-group"></i> Add Multiple</button><button type="button" class="btn btn-primary" id="addBtn"><i class="fas fa-plus"></i> Add Song</button><?php endif; ?>
 </div>
 <?php mc_worship_tabs('hymns'); ?>
 
@@ -83,7 +83,7 @@ $fields = ['hymn_number', 'title', 'hymn_book', 'language', 'author', 'tune', 't
         </div>
         <div class="church-form-row">
             <label>Song Book<input name="hymn_book" id="hymn_book" maxlength="150"></label>
-            <label>Language<input name="language" id="language" maxlength="80"></label>
+            <label>Language<select name="language" id="language"><option value="">Select language</option><?php foreach (mc_ugandan_languages() as $language): ?><option value="<?= ce_h($language) ?>"><?= ce_h($language) ?></option><?php endforeach; ?></select></label>
         </div>
         <div class="church-form-row">
             <label>Author / Translator<input name="author" id="author" maxlength="180"></label>
@@ -115,6 +115,7 @@ $fields = ['hymn_number', 'title', 'hymn_book', 'language', 'author', 'tune', 't
 <script>
 mcBindTable({
     addTitle: 'Add Song', editTitle: 'Edit Song', fields: <?= json_encode($fields) ?>,
+    onEdit: r => { const language = document.getElementById('language'); if (r.language && !Array.from(language.options).some(o => o.value === r.language)) language.add(new Option(r.language, r.language)); language.value = r.language || ''; },
     view: r => ({'Number': r.hymn_number, 'Title': r.title, 'Song Book': r.hymn_book, 'Language': r.language, 'Author / Translator': r.author, 'Tune / Metre': r.tune,
         'Theme / Season': r.theme, 'Scripture': r.scripture_reference, 'Status': r.status, 'Copyright Basis': r.lyrics ? r.copyright_status : 'No lyrics entered',
         'Copyright Notice': r.copyright_notice, 'Study Notes': r.study_notes, 'Lyrics': r.lyrics})
