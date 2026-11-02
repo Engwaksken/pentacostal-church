@@ -5,7 +5,7 @@ requireLogin();
 $id = intval($_GET['id'] ?? 0);
 
 $r = fetchOne("
-    SELECT 
+    SELECT
         b.*,
         m.full_name AS member_name
     FROM baptisms b
@@ -68,6 +68,8 @@ foreach ($certSignatories as $sigIndex => $sig) {
 // The first signatory's name falls back to the officiant recorded for this baptism.
 if ($certSignatories[0]['name'] === '') $certSignatories[0]['name'] = trim((string)($r['officiant'] ?? ''));
 
+$h = fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+
 ob_start();
 ?>
 <?php if (!$isPdf): ?>
@@ -82,8 +84,9 @@ ob_start();
 
 
 <style>
+/* A4 landscape: 297mm x 210mm, minus the 8mm margins leaves 281mm x 194mm. */
 @page{
-    size:A4 portrait;
+    size:A4 landscape;
     margin:8mm;
 }
 
@@ -118,21 +121,22 @@ html,body{
 
 /* certificate */
 .cert{
-    width:190mm;
-    min-height:270mm;
+    width:281mm;
+    max-width:100%;
+    min-height:194mm;
     margin:0 auto 15px auto;
     background:#fff;
     border:4px double #4b27a8;
-    padding:12mm;
+    padding:6mm;
     box-sizing:border-box;
     page-break-inside:avoid;
     break-inside:avoid;
 }
 
 .cert-inner{
-    min-height:245mm;
+    min-height:180mm;
     border:2px solid #d4a017;
-    padding:12mm;
+    padding:6mm 14mm 12mm;
     box-sizing:border-box;
     text-align:center;
     position:relative;
@@ -143,29 +147,22 @@ html,body{
     z-index:0;
     top:50%;
     left:50%;
-    width:65%;
-    height:55%;
+    width:45%;
+    height:65%;
     object-fit:contain;
     opacity:.055;
     transform:translate(-50%,-50%);
 }
 .cert-inner > :not(.certificate-watermark){position:relative;z-index:1}
 
-.cross{
-    font-size:34px;
-    color:#4b27a8;
-    line-height:1;
-    margin-bottom:4px;
-}
-
 .certificate-logo{
     display:block;
-    max-width:150px;
-    max-height:85px;
+    max-width:120px;
+    max-height:48px;
     width:auto;
     height:auto;
     object-fit:contain;
-    margin:0 auto 10px;
+    margin:0 auto 4px;
 }
 
 .church-name{
@@ -176,113 +173,111 @@ html,body{
 }
 
 .diocese{
-    font-size:13px;
+    font-size:12px;
     color:#555;
-    margin-bottom:12px;
 }
 
 h1{
-    margin:8px 0 6px;
+    margin:8px 0 4px;
     color:#d4a017;
-    font-size:30px;
-    letter-spacing:1px;
+    font-size:28px;
+    letter-spacing:2px;
 }
 
 .subtitle{
     color:#4b27a8;
     font-style:italic;
-    font-size:18px;
-    margin-bottom:16px;
+    font-size:15px;
+    margin-bottom:6px;
 }
 
 .candidate{
     display:inline-block;
-    font-size:34px;
+    font-size:28px;
     color:#4b27a8;
     font-weight:bold;
     border-bottom:2px solid #d4a017;
-    padding:0 18px 6px;
-    margin-bottom:14px;
+    padding:0 24px 4px;
+    margin-bottom:8px;
 }
 
 .cert-body{
-    font-size:23px;
-    line-height:1.65;
+    font-size:16px;
+    line-height:1.45;
     color:#111;
-    margin-bottom:18px;
+    margin-bottom:8px;
 }
 
 .details{
     width:100%;
     border-collapse:collapse;
-    margin-top:10px;
-    margin-bottom:24px;
+    margin:4px 0 6px;
 }
 
 .details td{
-    width:50%;
-    padding:8px 6px;
+    width:33.33%;
+    padding:5px 8px;
     vertical-align:top;
     border-bottom:1px dotted #ccc;
 }
 
 .label{
     display:block;
-    font-size:12px;
+    font-size:11px;
     color:#777;
     text-transform:uppercase;
-    margin-bottom:3px;
+    margin-bottom:2px;
 }
 
 .value{
-    font-size:16px;
+    font-size:14px;
     font-weight:bold;
     color:#111;
 }
 
 .signatures{
-    width:100%;
-    margin-top:30px;
+    width:80%;
+    margin:14px auto 0;
 }
 
 .signatures td{
     width:50%;
-    padding:0 10px;
+    padding:0 24px;
     text-align:center;
     vertical-align:top;
 }
 
 .signature-image{
     display:block;
-    width:180px;
-    height:70px;
+    width:150px;
+    height:40px;
     object-fit:contain;
     margin:0 auto 2px;
 }
 .signature-space{
-    height:70px;
+    height:40px;
 }
 .signatory-name{
-    font-size:14px;
+    font-size:13px;
     font-weight:bold;
-    min-height:18px;
+    min-height:16px;
     margin-bottom:2px;
 }
 .sig-line{
     border-top:1px solid #4b27a8;
-    padding-top:6px;
-    font-size:14px;
+    padding-top:4px;
+    font-size:13px;
 }
 
 .footer-note{
     position:absolute;
     left:0;
     right:0;
-    bottom:8mm;
+    bottom:4mm;
     font-size:11px;
     color:#777;
 }
-.cert-inner > .footer-note{position:absolute;left:0;right:0;bottom:8mm}
+.cert-inner > .footer-note{position:absolute;left:0;right:0;bottom:4mm}
 
 @media print{
     body{
@@ -293,30 +288,17 @@ h1{
         display:none !important;
     }
 
-    /* One printed A4 page: a fixed-size frame (281mm is the page minus the 8mm margins) and the PDF's text sizes. */
+    /* One printed landscape page: a fixed-size frame inside the 281mm x 194mm printable area. */
     .cert{
         margin:0 auto;
         box-shadow:none;
-        width:190mm;
-        height:279mm;
+        width:279mm;
+        max-width:none;
+        height:192mm;
         min-height:0;
-        padding:6mm;
         overflow:hidden;
     }
-    .cert-inner{height:100%;min-height:0;padding:5mm}
-    .certificate-logo{max-width:150px;max-height:95px;margin:6mm auto 6px}
-    .church-name{font-size:21px}
-    h1{font-size:32px;margin:8px 0}
-    .diocese{font-size:13px;margin-bottom:8px}
-    .subtitle{font-size:16px;margin-bottom:10px}
-    .candidate{font-size:30px;margin-bottom:12px;padding-bottom:6px}
-    .cert-body{font-size:17px;line-height:1.6;margin-bottom:12px}
-    .details{margin-top:10px;margin-bottom:12px}
-    .details td{padding:8px 6px}
-    .value{font-size:15px}
-    .signatures{margin-top:18mm}
-    .signature-image,.signature-space{height:60px}
-    .signatory-name,.sig-line{font-size:13px}
+    .cert-inner{height:100%;min-height:0}
 }
 
 body.certificate-pdf .cert{
@@ -326,34 +308,50 @@ body.certificate-pdf .cert{
     break-before:avoid;
     break-after:avoid;
     break-inside:auto;
-    /* One A4 page: 297mm minus the 8mm @page margins leaves 281mm; the frame stays well inside it. */
-    width:190mm;
-    height:262mm;
+    /* Dompdf adds the 6mm padding and 4px border on top: 265+15 = 280mm wide, 177+15 = 192mm tall. */
+    width:265mm;
+    max-width:none;
+    height:177mm;
     min-height:0;
     margin:0 auto;
-    padding:6mm;
     overflow:hidden;
 }
 body.certificate-pdf .cert-inner{
-    /* Explicit height (not 100%) so the gold frame closes inside the outer one even without box-sizing support. */
-    height:240mm;
+    /* Explicit height (not 100%) so the gold frame closes inside the outer one: 156+6+12 padding+border = 175mm. */
+    height:156mm;
     min-height:0;
-    padding:5mm;
+    padding-top:8mm;
 }
-body.certificate-pdf .certificate-logo{max-width:150px;max-height:95px;margin:6mm auto 6px}
-body.certificate-pdf .church-name{font-size:21px;letter-spacing:.5px}
-body.certificate-pdf h1{font-size:32px;margin:8px 0}
-body.certificate-pdf .diocese{font-size:13px;margin-bottom:8px}
-body.certificate-pdf .subtitle{font-size:16px;margin-bottom:10px}
-body.certificate-pdf .candidate{font-size:30px;margin-bottom:12px;padding-bottom:6px}
-body.certificate-pdf .cert-body{font-size:17px;line-height:1.6;margin-bottom:12px}
-body.certificate-pdf .details{margin-top:10px;margin-bottom:12px}
-body.certificate-pdf .details td{padding:8px 6px}
-body.certificate-pdf .value{font-size:15px}
-body.certificate-pdf .signatures{margin-top:22mm}
-body.certificate-pdf .signature-image,body.certificate-pdf .signature-space{height:60px}
-body.certificate-pdf .signatory-name,body.certificate-pdf .sig-line{font-size:13px}
-body.certificate-pdf .footer-note{bottom:4mm}
+
+/* Larger type for the printed and PDF page, which has room to spare. */
+@media print{
+    .certificate-logo{max-height:60px;margin-bottom:6px}
+    .church-name{font-size:23px}
+    .diocese{font-size:13px}
+    h1{font-size:36px;margin:12px 0 6px}
+    .subtitle{font-size:18px;margin-bottom:10px}
+    .candidate{font-size:34px;margin-bottom:12px}
+    .cert-body{font-size:19px;line-height:1.5;margin-bottom:14px}
+    .details td{padding:8px 10px}
+    .label{font-size:12px}
+    .value{font-size:16px}
+    .signatures{margin-top:26px}
+    .signature-image,.signature-space{height:55px}
+    .signatory-name,.sig-line{font-size:14px}
+}
+body.certificate-pdf .certificate-logo{max-height:60px;margin-bottom:6px}
+body.certificate-pdf .church-name{font-size:23px}
+body.certificate-pdf .diocese{font-size:13px}
+body.certificate-pdf h1{font-size:36px;margin:12px 0 6px}
+body.certificate-pdf .subtitle{font-size:18px;margin-bottom:10px}
+body.certificate-pdf .candidate{font-size:34px;margin-bottom:12px}
+body.certificate-pdf .cert-body{font-size:19px;line-height:1.5;margin-bottom:14px}
+body.certificate-pdf .details td{padding:8px 10px}
+body.certificate-pdf .label{font-size:12px}
+body.certificate-pdf .value{font-size:16px}
+body.certificate-pdf .signatures{margin-top:26px}
+body.certificate-pdf .signature-image,body.certificate-pdf .signature-space{height:55px}
+body.certificate-pdf .signatory-name,body.certificate-pdf .sig-line{font-size:14px}
 </style>
 
 
@@ -372,39 +370,27 @@ body.certificate-pdf .footer-note{bottom:4mm}
 <div class="cert">
 <div class="cert-inner">
 
-<?php if($certificateLogoSrc !== ''): ?><img class="certificate-watermark" src="<?= htmlspecialchars($certificateLogoSrc, ENT_QUOTES, 'UTF-8') ?>" alt="" aria-hidden="true"><?php endif; ?>
-<?php if($certificateLogoSrc !== ''): ?><img class="certificate-logo" src="<?= htmlspecialchars($certificateLogoSrc, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($certificateBrand['name'], ENT_QUOTES, 'UTF-8') ?> logo"><?php endif; ?>
-<div class="church-name"><?= htmlspecialchars($certificateBrand['name'], ENT_QUOTES, 'UTF-8') ?></div>
-<?php if($certificateBrand['subtitle'] !== ''): ?><div class="diocese"><?= htmlspecialchars($certificateBrand['subtitle'], ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
+<?php if($certificateLogoSrc !== ''): ?><img class="certificate-watermark" src="<?= $h($certificateLogoSrc) ?>" alt="" aria-hidden="true"><?php endif; ?>
+<?php if($certificateLogoSrc !== ''): ?><img class="certificate-logo" src="<?= $h($certificateLogoSrc) ?>" alt="<?= $h($certificateBrand['name']) ?> logo"><?php endif; ?>
+<div class="church-name"><?= $h($certificateBrand['name']) ?></div>
+<?php if($certificateBrand['subtitle'] !== ''): ?><div class="diocese"><?= $h($certificateBrand['subtitle']) ?></div><?php endif; ?>
 
 <h1>BAPTISM CERTIFICATE</h1>
 
 <div class="subtitle">This is to certify that</div>
 
-<div class="candidate">
-<?= htmlspecialchars($r['candidate_name']) ?>
-</div>
+<div class="candidate"><?= $h($r['candidate_name']) ?></div>
 
 <div class="cert-body">
 <?php if($r['baptism_type'] === 'Infant'): ?>
-
-was received into the Holy Sacrament of
-<strong>Infant Baptism</strong>
-
+was received into the Holy Sacrament of <strong>Infant Baptism</strong>
 <?php elseif($r['baptism_type'] === 'Confirmation'): ?>
-
 was <strong>Confirmed</strong> in the Faith
-
 <?php else: ?>
-
-received the Holy Sacrament of
-<strong><?= htmlspecialchars($r['baptism_type']) ?> Baptism</strong>
-
+received the Holy Sacrament of <strong><?= $h($r['baptism_type']) ?> Baptism</strong>
 <?php endif; ?>
-
-<br><br>
-
-at <strong><?= htmlspecialchars($r['venue']) ?></strong>
+<br>
+at <strong><?= $h($r['venue']) ?></strong>
 </div>
 
 <table class="details">
@@ -413,34 +399,27 @@ at <strong><?= htmlspecialchars($r['venue']) ?></strong>
 <span class="label">Date of Baptism</span>
 <span class="value"><?= date('d F Y', strtotime($r['baptism_date'])) ?></span>
 </td>
-
-<td>
-<span class="label">Officiant</span>
-<span class="value"><?= htmlspecialchars($r['officiant'] ?: '-') ?></span>
-</td>
-</tr>
-
-<tr>
-<td>
-<span class="label">Godfather</span>
-<span class="value"><?= htmlspecialchars($r['godfather'] ?: '-') ?></span>
-</td>
-
-<td>
-<span class="label">Godmother</span>
-<span class="value"><?= htmlspecialchars($r['godmother'] ?: '-') ?></span>
-</td>
-</tr>
-
-<tr>
 <td>
 <span class="label">Father</span>
-<span class="value"><?= htmlspecialchars($r['parent_father'] ?: '-') ?></span>
+<span class="value"><?= $h($r['parent_father'] ?: '-') ?></span>
 </td>
-
+<td>
+<span class="label">Godfather</span>
+<span class="value"><?= $h($r['godfather'] ?: '-') ?></span>
+</td>
+</tr>
+<tr>
+<td>
+<span class="label">Officiant</span>
+<span class="value"><?= $h($r['officiant'] ?: '-') ?></span>
+</td>
 <td>
 <span class="label">Mother</span>
-<span class="value"><?= htmlspecialchars($r['parent_mother'] ?: '-') ?></span>
+<span class="value"><?= $h($r['parent_mother'] ?: '-') ?></span>
+</td>
+<td>
+<span class="label">Godmother</span>
+<span class="value"><?= $h($r['godmother'] ?: '-') ?></span>
 </td>
 </tr>
 </table>
@@ -450,25 +429,26 @@ at <strong><?= htmlspecialchars($r['venue']) ?></strong>
 <?php foreach ($certSignatories as $sig): ?>
 <td>
 <?php if ($sig['src'] !== ''): ?>
-<img class="signature-image" src="<?= htmlspecialchars($sig['src'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($sig['title'], ENT_QUOTES, 'UTF-8') ?> signature">
+<img class="signature-image" src="<?= $h($sig['src']) ?>" alt="<?= $h($sig['title']) ?> signature">
 <?php else: ?>
 <div class="signature-space"></div>
 <?php endif; ?>
-<div class="signatory-name"><?= htmlspecialchars($sig['name'], ENT_QUOTES, 'UTF-8') ?></div>
-<div class="sig-line"><?= htmlspecialchars($sig['title'], ENT_QUOTES, 'UTF-8') ?></div>
+<div class="signatory-name"><?= $h($sig['name']) ?></div>
+<div class="sig-line"><?= $h($sig['title']) ?></div>
 </td>
 <?php endforeach; ?>
 </tr>
 </table>
 
 <div class="footer-note">
-Baptism No: <?= htmlspecialchars($r['baptism_no']) ?>
-
+Baptism No: <?= $h($r['baptism_no']) ?>
 <?php if(!empty($r['certificate_no'])): ?>
- | Cert No: <?= htmlspecialchars($r['certificate_no']) ?>
+ | Cert No: <?= $h($r['certificate_no']) ?>
 <?php endif; ?>
-
  | Printed: <?= $generated ?>
+</div>
+
+</div>
 </div>
 
 <?php if (!$isPdf): ?>
@@ -497,7 +477,7 @@ if($isPdf){
 
         $dompdf = new \Dompdf\Dompdf($options);
         $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
 
         $dompdf->stream(
