@@ -45,6 +45,9 @@ function enforce_member_read_only():void{
     $method=strtoupper($_SERVER['REQUEST_METHOD']??'GET');
     if(in_array($method,['GET','HEAD'],true))return;
     $path=strtolower(str_replace('\\','/',parse_url($_SERVER['REQUEST_URI']??'',PHP_URL_PATH)?:''));
+    // Procurement applies its own role/department authorization in its endpoint.
+    // Assigned procurement members and department leaders need to submit and decide requests.
+    if(str_contains($path,'/procurement/process.php'))return;
     $allowed=['/member/profile.php','/member/notebook.php','/member/appointments'];
     foreach($allowed as $needle)if(str_contains($path,$needle))return;
     http_response_code(403);header('Content-Type: application/json; charset=utf-8');echo json_encode(['success'=>false,'message'=>'Member accounts have view-only access.']);exit;
@@ -55,7 +58,7 @@ function permission_for_request():string{
         $map=['tips'=>'member.tips.view','hymns'=>'member.worship.view','order-of-service'=>'member.worship.view','children'=>'member.children.view','church'=>'member.church.view','giving'=>'member.giving.view','projects'=>'member.projects.view','programs'=>'member.programs.view','services'=>'member.services.view','announcements'=>'member.announcements.view','annual-theme'=>'member.theme.view','harvests'=>'member.harvests.view','notebook'=>'member.profile.view','appointments'=>'member.appointments.view','contact'=>'member.profile.view','attendance'=>'member.attendance.view','event-certificates'=>'events.view','events'=>'events.view','profile'=>'member.profile.view','payment-gateways'=>'member.payment_gateways.view','payment'=>'member.payments.view'];
         foreach($map as $n=>$p)if(str_contains($path,$n))return $p;
     }
-    $map=['/appointments/'=>'dashboard.view','/members/'=>'members.view','/baptism/'=>'baptism.view','/sunday_school/'=>'sunday_school.view','/youth/'=>'youth.view','/departments/'=>'departments.view','/offertory/'=>'offertory.view','/tithe/'=>'tithe.view','/thanksgiving/'=>'thanksgiving.view','/pledges/'=>'pledges.view','/contributions/'=>'contributions.view','/good_samaritan/'=>'good_samaritan.view','/projects/'=>'projects.view','/fundraising/'=>'fundraising.view','/bulk_messages/'=>'bulk_messages.view','/attendance/'=>'attendance.view','/events/'=>'events.view','/missions/'=>'missions.view','/church_assets/'=>'church_assets.view','/reports/'=>'reports.view','/settings/'=>'settings.manage','/users/'=>'users.manage'];
+    $map=['/procurement/'=>'dashboard.view','/appointments/'=>'dashboard.view','/members/'=>'members.view','/baptism/'=>'baptism.view','/sunday_school/'=>'sunday_school.view','/youth/'=>'youth.view','/departments/'=>'departments.view','/offertory/'=>'offertory.view','/tithe/'=>'tithe.view','/thanksgiving/'=>'thanksgiving.view','/pledges/'=>'pledges.view','/contributions/'=>'contributions.view','/good_samaritan/'=>'good_samaritan.view','/projects/'=>'projects.view','/fundraising/'=>'fundraising.view','/bulk_messages/'=>'bulk_messages.view','/attendance/'=>'attendance.view','/events/'=>'events.view','/missions/'=>'missions.view','/church_assets/'=>'church_assets.view','/reports/'=>'reports.view','/settings/'=>'settings.manage','/users/'=>'users.manage'];
     foreach($map as $n=>$p)if(str_contains($path,$n))return $p;return 'dashboard.view';
 }
 function enforce_current_page_permission():void{enforce_member_read_only();require_permission(permission_for_request());}
