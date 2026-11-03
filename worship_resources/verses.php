@@ -21,7 +21,7 @@ $recordFlags = JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP;
 <?php ce_show_flash(); ?>
 <div class="church-page-head">
     <div><h2><i class="fas fa-book-bible"></i> Bible Verses</h2><p>Verses shown on the member welcome dashboard. A verse with a display date appears from that day; undated verses fill in when none is scheduled.</p></div>
-    <?php if ($ready): ?><button type="button" class="btn btn-primary" id="addBtn"><i class="fas fa-plus"></i> Add Verse</button><?php endif; ?>
+    <?php if ($ready): ?><button type="button" class="btn btn-outline-primary" data-content-bulk="verses"><i class="fas fa-layer-group"></i> Add Multiple</button><button type="button" class="btn btn-primary" id="addBtn"><i class="fas fa-plus"></i> Add Verse</button><?php endif; ?>
 </div>
 <?php mc_worship_tabs('verses'); ?>
 

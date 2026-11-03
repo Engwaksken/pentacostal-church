@@ -131,7 +131,8 @@ function wr_save_service_order(mysqli $conn, ?array $existing, string $status, ?
     $notes = mc_post_text('notes', 'Notes', 5000);
     $items = wr_posted_items($conn);
 
-    $conn->begin_transaction();
+    $ownsTransaction = !$conn->in_transaction;
+    if ($ownsTransaction) $conn->begin_transaction();
     try {
         if ($existing) {
             $id = (int)$existing['id'];
@@ -160,9 +161,9 @@ function wr_save_service_order(mysqli $conn, ?array $existing, string $status, ?
             }
             $stmt->close();
         }
-        $conn->commit();
+        if ($ownsTransaction) $conn->commit();
     } catch (Throwable $e) {
-        $conn->rollback();
+        if ($ownsTransaction) $conn->rollback();
         throw $e;
     }
 }
@@ -175,7 +176,37 @@ try {
     $uid = ce_user_id();
     $label = ['verses' => 'Bible verse', 'order_of_service' => 'Service Program', 'hymns' => 'Song'][$resource];
 
-    if ($action === 'save') {
+    if ($action === 'save_bulk') {
+        $entries = json_decode((string)($_POST['entries'] ?? ''), true);
+        if (!is_array($entries) || !$entries || count($entries) > 50) throw new RuntimeException('Add between 1 and 50 entries at a time.');
+        $conn->begin_transaction();
+        try {
+            foreach ($entries as $index => $entry) {
+                if (!is_array($entry)) throw new RuntimeException('Entry ' . ($index + 1) . ' is invalid.');
+                $_POST = array_merge($_POST, $entry, ['resource' => $resource, 'status' => $entry['status'] ?? 'Draft']);
+                if ($resource === 'order_of_service') {
+                    $items = is_array($entry['items'] ?? null) ? $entry['items'] : [];
+                    $_POST['item_title'] = array_column($items, 'title');
+                    $_POST['item_led_by'] = array_column($items, 'led_by');
+                    $_POST['item_details'] = array_column($items, 'details');
+                    $_POST['item_hymn_id'] = array_column($items, 'hymn_id');
+                }
+                $status = mc_post_status();
+                $publishedAt = mc_published_at($status, null, null);
+                match ($resource) {
+                    'verses' => wr_save_verse($conn, null, $status, $publishedAt, $uid),
+                    'hymns' => wr_save_hymn($conn, null, $status, $publishedAt, $uid),
+                    'order_of_service' => wr_save_service_order($conn, null, $status, $publishedAt, $uid),
+                };
+            }
+            $conn->commit();
+        } catch (Throwable $e) {
+            $conn->rollback();
+            throw $e;
+        }
+        ce_flash('success', count($entries) . ' ' . $label . ' entries saved.');
+
+    } elseif ($action === 'save') {
         $id = (int)($_POST['id'] ?? 0);
         $existing = $id > 0 ? wr_load($conn, $table, $id) : null;
         $status = mc_post_status();

@@ -32,6 +32,47 @@ function getSum(mysqli $conn, string $table, string $amountCol, string $dateCol,
     return (float)($row['total'] ?? 0);
 }
 
+/** Sum tithe records plus receipt-ledger tithe entries not already represented in tithe. */
+function getTitheSum(mysqli $conn, string $from, string $to): float {
+    $total = getSum($conn, 'tithe', 'amount', 'tithe_date', $from, $to);
+    try {
+        $res = $conn->query("SHOW COLUMNS FROM receipts");
+    } catch (Throwable $e) {
+        return $total;
+    }
+    if (!$res) return $total;
+    $columns = [];
+    while ($row = $res->fetch_assoc()) $columns[$row['Field']] = true;
+    $res->free();
+    if (!isset($columns['amount'], $columns['receipt_date'], $columns['source_type'])) return $total;
+
+    $linkColumn = isset($columns['tithe_id']) ? 'tithe_id' : (isset($columns['source_id']) ? 'source_id' : null);
+    if ($linkColumn !== null) {
+        $sql = "SELECT COALESCE(SUM(r.amount),0) total FROM receipts r
+                WHERE r.source_type='Tithe' AND r.receipt_date BETWEEN ? AND ?
+                AND (r.`$linkColumn` IS NULL OR NOT EXISTS (SELECT 1 FROM tithe t WHERE t.id=r.`$linkColumn`))";
+    } else {
+        if ($total > 0) return $total;
+        $sql = "SELECT COALESCE(SUM(r.amount),0) total FROM receipts r WHERE r.source_type='Tithe' AND r.receipt_date BETWEEN ? AND ?";
+    }
+    try {
+        $stmt = $conn->prepare($sql);
+    } catch (Throwable $e) {
+        return $total;
+    }
+    if (!$stmt) return $total;
+    $stmt->bind_param('ss', $from, $to);
+    try {
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    } catch (Throwable $e) {
+        $stmt->close();
+        return $total;
+    }
+    return $total + (float)($row['total'] ?? 0);
+}
+
 function getSingleValue(mysqli $conn, string $sql): float {
     $res = $conn->query($sql);
     if (!$res) {
@@ -89,7 +130,7 @@ switch ($period) {
 }
 
 $inc_offertory     = getSum($conn, 'offertory', 'total_amount', 'service_date', $from, $to);
-$inc_tithe         = getSum($conn, 'tithe', 'amount', 'tithe_date', $from, $to);
+$inc_tithe         = getTitheSum($conn, $from, $to);
 $inc_thanksgiving  = getSum($conn, 'thanksgiving', 'amount', 'thanksgiving_date', $from, $to);
 $inc_contributions = getSum($conn, 'contributions', 'amount', 'contributed_on', $from, $to);
 $inc_pledges       = getSum($conn, 'pledge_payments', 'amount', 'paid_on', $from, $to);
@@ -109,7 +150,7 @@ for ($i = 11; $i >= 0; $i--) {
     $mTo = date('Y-m-t', strtotime($mFrom));
 
     $mOff = getSum($conn, 'offertory', 'total_amount', 'service_date', $mFrom, $mTo);
-    $mTithe = getSum($conn, 'tithe', 'amount', 'tithe_date', $mFrom, $mTo);
+    $mTithe = getTitheSum($conn, $mFrom, $mTo);
     $mTgiv = getSum($conn, 'thanksgiving', 'amount', 'thanksgiving_date', $mFrom, $mTo);
     $mCont = getSum($conn, 'contributions', 'amount', 'contributed_on', $mFrom, $mTo);
     $mFund = getSum($conn, 'fundraising_collections', 'amount', 'collection_date', $mFrom, $mTo);

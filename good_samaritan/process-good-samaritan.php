@@ -104,8 +104,9 @@ try {
         }
 
         if ($id <= 0) gs_json(false, 'Invalid record ID.');
-        $stmt = $conn->prepare("UPDATE good_samaritan SET receipt_no=?, member_id=?, amount=?, payment_method=?, given_on=?, notes=? WHERE id=?");
-        $stmt->bind_param('sidsssi', $receipt, $member_id, $amount, $method, $date, $notes, $id);
+        $recordedBy = (int)($_SESSION['user_id'] ?? 0) ?: null;
+        $stmt = $conn->prepare("UPDATE good_samaritan SET receipt_no=?, member_id=?, amount=?, payment_method=?, given_on=?, notes=?, recorded_by=? WHERE id=?");
+        $stmt->bind_param('sidsssii', $receipt, $member_id, $amount, $method, $date, $notes, $recordedBy, $id);
         $stmt->execute(); $stmt->close();
         if ($hasService) gs_save_service($conn, $id, $serviceType, $session);
         gs_json(true, 'Good Samaritan collection updated.');
