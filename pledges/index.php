@@ -38,6 +38,23 @@ include '../includes/sidebar.php';
 #statModal .table-responsive{max-height:55vh;overflow:auto}
 #statModal thead th{position:sticky;top:0;background:#fff;z-index:1}
 @media(max-width:767px){.pledge-pagination-bar{align-items:flex-start;flex-direction:column}}
+/* Keep pledge content using the full phone viewport; let the wide data table scroll. */
+.pledges-module,.pledges-module>.content-area{width:100%;max-width:100%;min-width:0}
+.pledges-module .table-responsive{display:block;width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pledges-module .module-table{min-width:900px;table-layout:auto}
+.pledges-module .module-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media(max-width:600px){
+ .pledges-module .content-area{padding:12px 10px 24px}
+ .pledges-module .module-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}
+ .pledges-module .stat-card-click{min-width:0;padding:10px;gap:7px}
+ .pledges-module .stat-card-click .stat-icon{flex:0 0 30px;width:30px;height:30px}
+ .pledges-module .stat-card-click .stat-value{font-size:clamp(.78rem,3.4vw,1rem);overflow-wrap:anywhere}
+ .pledges-module .module-page-header>div:last-child{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:7px}
+ .pledges-module .module-page-header>div:last-child .btn{min-width:0;padding:8px 6px;font-size:11px;white-space:normal}
+ .pledges-module .card-body{padding:12px 10px}
+ .pledge-pagination-right{width:100%;justify-content:space-between}
+ .pledge-pagination{max-width:100%;overflow-x:auto}
+}
 </style>
 <?php if (function_exists('showFlash')) { showFlash(); } ?>
 <div class="page-header module-page-header">
