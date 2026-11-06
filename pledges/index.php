@@ -69,7 +69,7 @@ include '../includes/sidebar.php';
 <div class="card">
   <div class="card-body">
     <div class="page-toolbar">
-      <div class="page-toolbar-search"><i class="fas fa-search"></i><input type="text" class="form-control" id="pledgeSearch" placeholder="Search pledge, member, project..."></div>
+      <div class="page-toolbar-search"><i class="fas fa-search"></i><input type="text" class="form-control" id="pledgeSearch" placeholder="Search pledge no, member, project..." autocomplete="off"></div>
       <div class="page-toolbar-filters">
       <select id="pledgeYearFilter" class="form-control" aria-label="Filter pledges by year"><option value="">All years</option><?php for($year=(int)date('Y')+1;$year>=2000;$year--): ?><option value="<?= $year ?>"<?= $year===(int)date('Y')?' selected':'' ?>><?= $year ?></option><?php endfor; ?></select>
       <select id="pledgeTypeFilter" class="form-control" aria-label="Filter by pledge type"><option value="">All pledge types</option><?php if ($typesReady): foreach(pledge_types() as $t): ?><option value="<?= ph($t) ?>"><?= ph($t==='Annual'?'Annual Pledge':$t) ?></option><?php endforeach; else: ?><option value="Annual">Annual Pledge</option><?php endif; ?></select>
@@ -78,6 +78,7 @@ include '../includes/sidebar.php';
       <div class="page-toolbar-actions"><button type="button" class="btn btn-outline-primary page-toolbar-refresh" id="btnRefreshPledges"><i class="fas fa-rotate-right"></i> Refresh</button></div>
     </div>
     <div id="pageAlert" class="ajax-alert"></div>
+    <small id="pledgeSearchNote" class="text-muted" style="display:none;margin:0 0 8px" role="status"></small>
     <div class="table-responsive">
       <table class="table module-table">
         <thead><tr><th>#</th><th>Pledge No</th><th>Member</th><th>Project/Reason</th><th>Pledged</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
@@ -236,8 +237,42 @@ function badge(s){ const map={Pending:'badge-warning',Partial:'badge-info',Fulfi
 function renderStats(st){ qs('#stTotal').textContent=money(st.total||0); qs('#stPaid').textContent=money(st.paid||0); qs('#stPending').textContent=Number(st.pending||0); qs('#stOverdue').textContent=Number(st.overdue||0); qs('#stPartial').textContent=Number(st.partial||0); qs('#stFulfilled').textContent=Number(st.fulfilled||0); qs('#stThisYear').textContent=money(st.this_year||0); qs('#stLastYear').textContent=money(st.last_year||0); qs('#stThisMonth').textContent=money(st.paid_this_month||0); }
 function pledgeRow(p,n){ const balance=Number(p.amount_pledged||0)-Number(p.amount_paid||0); const purpose=p.purpose||p.project_name||p.pledge_reason||'General Pledge'; return `<tr><td>${n}</td><td><b>${esc(p.pledge_no)}</b></td><td>${esc(p.full_name||'—')}<br><small>${esc(p.member_no||'')}</small></td><td>${esc(purpose)}</td><td>${money(p.amount_pledged)}</td><td>${money(p.amount_paid)}</td><td>${money(balance)}</td><td>${esc(p.due_date||'—')}</td><td>${badge(p.status)}</td><td><div class="table-action"><button class="btn btn-sm btn-info btn-icon" data-action="view" data-id="${Number(p.id)}" title="View"><i class="fas fa-eye"></i></button><button class="btn btn-sm btn-primary btn-icon" data-action="edit" data-id="${Number(p.id)}" title="Edit"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-success btn-icon" data-action="pay" data-id="${Number(p.id)}" data-balance="${balance}" data-name="${esc(p.pledge_no)}" title="Pay"><i class="fas fa-coins"></i></button><a class="btn btn-sm btn-accent btn-icon" href="pledge_card.php?pledge_id=${Number(p.id)}" target="_blank" title="Pledge Card"><i class="fas fa-id-card"></i></a><button class="btn btn-sm btn-danger btn-icon" data-action="delete" data-id="${Number(p.id)}" data-name="${esc(p.pledge_no)}" title="Delete"><i class="fas fa-trash"></i></button></div></td></tr>`; }
 const pledgePager=createPager({tbody:'#pledgeTbody',summary:'#pledgePageSummary',nav:'#pledgePager',size:'#pledgePageSize',cols:()=>10,empty:'No pledges found.',row:pledgeRow,scrollTo:'#pledgeSearch'});
-const matchText=(r,t)=>!t||Object.values(r).join(' ').toLowerCase().includes(t);
-function applySearch(keepPage){ const t=(qs('#pledgeSearch').value||'').trim().toLowerCase(); pledgePager.set(rows.filter(r=>matchText(r,t)),keepPage===true); }
+// ---- Search: pledge numbers match exactly; other words match name, member no, purpose, phone, etc. ----
+const pledgeKey=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/\d+/g,d=>d.replace(/^0+(?=\d)/,''));
+const SEARCH_FIELDS=['pledge_no','full_name','member_no','purpose','project_name','pledge_reason','pledge_type','status','phone','email','receipt_no','method','notes'];
+const searchHay=r=>SEARCH_FIELDS.map(f=>r[f]??'').join(' ').toLowerCase();
+function looksLikePledgeNo(t){ return /^[a-z]{0,4}[-\/ ]?\d+$/i.test(t); }
+// Returns the rows matching the search text t (already trimmed, lower-case).
+function searchRows(list,t){
+  if(!t) return list.slice();
+  if(looksLikePledgeNo(t)){
+    const key=pledgeKey(t), digits=/^\d+$/.test(key), num=r=>pledgeKey(String(r.pledge_no??'').replace(/\D/g,''));
+    let exact=list.filter(r=>pledgeKey(r.pledge_no)===key);
+    if(!exact.length&&digits) exact=list.filter(r=>num(r)===key);
+    if(exact.length) return exact;
+    // No exact pledge number: fall back to member number / phone / receipt containing the digits.
+    return list.filter(r=>[r.member_no,r.phone,r.receipt_no].some(v=>pledgeKey(v).includes(key)));
+  }
+  const words=t.split(/\s+/).filter(Boolean);
+  return list.filter(r=>{ const hay=searchHay(r); return words.every(w=>hay.includes(w)); });
+}
+let searchSeq=0;
+async function applySearch(keepPage){
+  const raw=(qs('#pledgeSearch').value||'').trim(), t=raw.toLowerCase(), seq=++searchSeq;
+  let found=searchRows(rows,t), note='';
+  // Nothing in the selected year: look across all years so an older pledge number is still found.
+  if(t&&!found.length&&qs('#pledgeYearFilter').value&&!overdueOnly){
+    try{
+      const d=await req(cfg.endpoint+'?action=list&status='+encodeURIComponent(qs('#pledgeStatusFilter').value)+'&type='+encodeURIComponent(qs('#pledgeTypeFilter').value));
+      if(seq!==searchSeq) return;
+      const other=d.success?searchRows(d.items||[],t):[];
+      if(other.length){ found=other; note=`No match for "${raw}" in ${qs('#pledgeYearFilter').value} — showing matches from all years.`; }
+    }catch(e){}
+  }
+  if(seq!==searchSeq) return;
+  pledgePager.set(found,keepPage===true);
+  const help=qs('#pledgeSearchNote'); if(help){ help.textContent=note||(t&&!found.length?`No pledge matches "${raw}". Check the pledge number, or choose "All years".`:''); help.style.display=help.textContent?'':'none'; }
+}
 async function load(){ clearAlert(qs('#pageAlert')); const d=await req(cfg.endpoint+'?action=list&status='+encodeURIComponent(qs('#pledgeStatusFilter').value)+'&year='+encodeURIComponent(qs('#pledgeYearFilter').value)+'&type='+encodeURIComponent(qs('#pledgeTypeFilter').value)+'&overdue='+(overdueOnly?'1':'0')); if(!d.success) throw new Error(d.message||'Failed to load pledges.'); rows=d.items||[]; renderStats(d.stats||{}); applySearch(true); if(detail&&isOpen('#statModal')) refreshDetail(true).catch(err=>alertBox(qs('#statAlert'),err.message,'error')); }
 
 // ---- Statistics card lists: each card opens the pledges (or payments) behind its number ----
@@ -269,7 +304,7 @@ async function refreshDetail(keepPage){
 }
 function applyDetailFilter(keepPage){
   const def=DETAILS[detail.kind], t=(qs('#statSearch').value||'').trim().toLowerCase(), st=qs('#statStatus').value, ty=qs('#statType').value, me=qs('#statMethod').value;
-  const list=detailItems.filter(r=>matchText(r,t)&&(def.payments||!st||r.status===st)&&(!ty||(r.purpose||r.project_name||r.pledge_reason||'General Pledge')===ty)&&(!def.payments||!me||r.method===me));
+  const list=searchRows(detailItems,t).filter(r=>(def.payments||!st||r.status===st)&&(!ty||(r.purpose||r.project_name||r.pledge_reason||'General Pledge')===ty)&&(!def.payments||!me||r.method===me));
   const sum=k=>list.reduce((a,r)=>a+Number(r[k]||0),0);
   qs('#statSummary').innerHTML=def.payments
     ?`<span><b>${list.length.toLocaleString()}</b> payment${list.length===1?'':'s'}</span><span>Total received: <b>${money(sum('amount'))}</b></span><span>Members: <b>${new Set(list.map(r=>r.pledge_no)).size.toLocaleString()}</b></span>`
