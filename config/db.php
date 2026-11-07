@@ -1,23 +1,15 @@
 <?php
-// Configure these values in the server environment or in a .env file at the site root (see .env.example);
-// never commit live credentials. Real environment variables win over .env.
-$envFile = dirname(__DIR__) . '/.env';
-if (is_readable($envFile)) {
-    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $envLine) {
-        $envLine = trim($envLine);
-        if ($envLine === '' || $envLine[0] === '#' || strpos($envLine, '=') === false) continue;
-        [$envKey, $envValue] = array_map('trim', explode('=', $envLine, 2));
-        if (strlen($envValue) > 1 && ($envValue[0] === '"' || $envValue[0] === "'") && substr($envValue, -1) === $envValue[0]) {
-            $envValue = substr($envValue, 1, -1);
-        }
-        if ($envKey !== '' && getenv($envKey) === false) putenv("$envKey=$envValue");
-    }
+// Database login comes from the .env file at the site root (see .env.example); never commit live credentials.
+require_once __DIR__ . '/env.php';
+if (env('DB_NAME') === null || env('DB_USER') === null) {
+    error_log('Database settings missing: set DB_HOST, DB_NAME, DB_USER and DB_PASS in ' . dirname(__DIR__) . '/.env');
+    http_response_code(500);
+    die("<div style='padding:20px;color:red;font-family:sans-serif;'><strong>Configuration error:</strong> database settings are missing from the .env file.</div>");
 }
-unset($envFile, $envLine, $envKey, $envValue);
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: '');
-define('DB_NAME', getenv('DB_NAME') ?: 'cou_church');
+define('DB_HOST', env('DB_HOST', 'localhost'));
+define('DB_USER', env('DB_USER'));
+define('DB_PASS', env('DB_PASS', ''));
+define('DB_NAME', env('DB_NAME'));
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     die("<div style='padding:20px;color:red;font-family:sans-serif;'><strong>DB Error:</strong> ".$conn->connect_error."</div>");

@@ -1,7 +1,10 @@
 <?php
 
+require_once __DIR__ . '/../config/env.php';
+
 if (!defined('CHECKIN_LINK_SECRET')) {
-    define('CHECKIN_LINK_SECRET', 'church-attendance-checkin-fallback-secret-please-override');
+    // Set CHECKIN_LINK_SECRET in .env; changing it invalidates check-in links already shared.
+    define('CHECKIN_LINK_SECRET', env('CHECKIN_LINK_SECRET', 'church-attendance-checkin-fallback-secret-please-override'));
 }
 
 function checkin_b64url_encode(string $data): string {

@@ -17,7 +17,7 @@ A PHP and MySQL application for managing church administration, finances, member
 
 ## Setup
 
-1. Create a MySQL database and configure the `DB_HOST`, `DB_USER`, `DB_PASS`, and `DB_NAME` environment variables. See `.env.example` for the variable names. The application reads them from the server environment; it does not load `.env` files automatically.
+1. Create a MySQL database, copy `.env.example` to `.env` in the site root, and fill in `APP_URL`, `DB_HOST`, `DB_NAME`, `DB_USER`, and `DB_PASS`. The application loads `.env` through `config/env.php`; real server environment variables override it. `.htaccess` blocks `.env` from the web.
 2. Install PHP dependencies with `composer install`.
 3. Import the required schema from the SQL files in `database/` and configure the web server document root to this project.
 4. Sign in using an account provisioned in the database, then configure the site name and logo in Site Settings.
@@ -28,4 +28,4 @@ Reports use the configured site name and logo in printable report output and PDF
 
 ## Security
 
-Do not commit database credentials, `.env` files, logs, or user-uploaded files. Set database credentials through the hosting environment before deploying.
+Do not commit database credentials, `.env` files, logs, or user-uploaded files. Keep database credentials in the server's `.env` file (or the hosting environment).
