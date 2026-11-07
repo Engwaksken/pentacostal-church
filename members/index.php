@@ -177,6 +177,32 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
     .member-stat-icon{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:rgba(46,49,146,.1);color:#2e3192;font-size:20px}
     .member-stat-card strong{display:block;font-size:25px;line-height:1.1;color:#172033}.member-stat-card span{font-size:13px;color:#6b7280}
     @media(max-width:1100px){.member-stats-grid{grid-template-columns:repeat(2,1fr)}}
+    /* Add Members modal: bulk rows */
+    .mb-defaults-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .mb-row-grid{display:grid;grid-template-columns:28px minmax(180px,2.2fr) minmax(80px,.8fr) minmax(85px,.9fr) minmax(100px,1fr) minmax(120px,1.3fr) minmax(95px,1fr) minmax(95px,1fr) minmax(82px,.8fr) 36px;gap:6px;align-items:start}
+    #memberRowsHeader{padding:8px 20px;background:#f5f1ff;border-bottom:2px solid var(--border);font-size:10.5px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;align-items:center}
+    #memberRowsContainer{max-height:420px;overflow-y:auto;padding:10px 20px}
+    .member-bulk-row{padding:8px 0;border-bottom:1px solid #f0ecfa}
+    .member-bulk-row .form-group{margin:0;min-width:0}
+    .member-bulk-row .form-control{width:100%;min-width:0}
+    .mb-num{padding-top:8px;color:var(--text-muted);font-size:11px;text-align:center;font-weight:700}
+    .mb-remove{padding-top:4px}
+    .mb-cell-label{display:none;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:3px}
+    @media(max-width:1100px){
+        .mb-defaults-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        #memberRowsHeader{display:none}
+        #memberRowsContainer{max-height:min(60vh,520px);padding:12px}
+        .member-bulk-row.mb-row-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;margin-bottom:12px;border:1px solid var(--border);border-radius:12px;background:#faf9fd}
+        .mb-cell-label{display:block}
+        .mb-num{grid-row:1;grid-column:1/-1;justify-self:start;text-align:left;padding-top:4px;font-size:12px;color:var(--primary)}
+        .mb-num::before{content:"Member #"}
+        .mb-remove{grid-row:1;grid-column:1/-1;justify-self:end;padding-top:0}
+        .mb-name{grid-column:1/-1}
+    }
+    @media(max-width:600px){
+        .mb-defaults-grid{grid-template-columns:1fr}
+        .member-bulk-row.mb-row-grid{grid-template-columns:1fr}
+    }
     @media(max-width:620px){.member-stats-grid{grid-template-columns:1fr}#memberRegistrationLinkModal .form-grid{grid-template-columns:1fr!important}#memberRegistrationLinkModal .modal-body>div[style*="grid-template-columns:minmax"]{grid-template-columns:1fr!important}}
     </style>
 
@@ -433,7 +459,7 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                             <i class="fas fa-sliders-h"></i> Defaults applied to all members below
                             <small class="text-muted" style="font-weight:400;margin-left:6px">(override per-row if needed)</small>
                         </div>
-                        <div class="form-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+                        <div class="mb-defaults-grid">
                             <div class="form-group" style="margin:0">
                                 <label>Joined Date</label>
                                 <input type="date" id="bulkJoinedDate" class="form-control"
@@ -468,15 +494,7 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                     </div>
 
                     <!-- Column headers -->
-                    <div id="memberRowsHeader" style="
-                        display:grid;
-                        grid-template-columns:24px 1.6fr 90px 100px 110px 110px 110px 120px 90px 36px;
-                        gap:6px;align-items:center;
-                        padding:8px 20px;
-                        background:#f5f1ff;
-                        border-bottom:2px solid var(--border);
-                        font-size:10.5px;font-weight:700;color:var(--primary);
-                        text-transform:uppercase;letter-spacing:.5px">
+                    <div id="memberRowsHeader" class="mb-row-grid">
                         <div></div>
                         <div><i class="fas fa-user"></i> Full Name *</div>
                         <div><i class="fas fa-venus-mars"></i> Gender *</div>
@@ -490,8 +508,7 @@ $exportQuery = http_build_query(array_filter(['search'=>$search,'status'=>$statu
                     </div>
 
                     <!-- Scrollable rows container -->
-                    <div id="memberRowsContainer" style="
-                        max-height:420px;overflow-y:auto;padding:10px 20px">
+                    <div id="memberRowsContainer">
                         <!-- rows injected by JS -->
                     </div>
 
@@ -888,56 +905,57 @@ window.MEMBER_MODULE = {
     function createRow(n=1) {
         const idx = ++rowCounter;
         const row = document.createElement('div');
-        row.className  = 'member-bulk-row';
+        row.className  = 'member-bulk-row mb-row-grid';
         row.dataset.idx = idx;
-        row.style.cssText = `
-            display:grid;
-            grid-template-columns:24px 1.6fr 90px 100px 110px 110px 110px 120px 90px 36px;
-            gap:6px;align-items:start;
-            padding:8px 0;
-            border-bottom:1px solid #f0ecfa;
-        `;
         row.innerHTML = `
-            <div style="padding-top:8px;color:var(--text-muted);font-size:11px;text-align:center;font-weight:700">${n}</div>
-            <div class="form-group" style="margin:0">
-                <input type="text" name="members[${idx}][full_name]"
+            <div class="mb-num">${n}</div>
+            <div class="form-group mb-name">
+                <label class="mb-cell-label" for="mbName${idx}">Full Name *</label>
+                <input type="text" id="mbName${idx}" name="members[${idx}][full_name]"
                        class="form-control form-control-sm" placeholder="Full name" required>
             </div>
-            <div class="form-group" style="margin:0">
+            <div class="form-group">
+                <label class="mb-cell-label">Gender *</label>
                 <select name="members[${idx}][gender]" class="form-control form-control-sm" required>
                     <option value="">-</option>
                     <option>Male</option>
                     <option>Female</option>
                 </select>
             </div>
-            <div class="form-group" style="margin:0">
+            <div class="form-group">
+                <label class="mb-cell-label">Pledge No</label>
                 <input type="text" name="members[${idx}][pledge_no]"
                        class="form-control form-control-sm" placeholder="Pledge no">
             </div>
-            <div class="form-group" style="margin:0">
+            <div class="form-group">
+                <label class="mb-cell-label">Phone</label>
                 <input type="text" name="members[${idx}][phone]"
                        class="form-control form-control-sm" placeholder="Phone">
             </div>
-            <div class="form-group" style="margin:0">
+            <div class="form-group">
+                <label class="mb-cell-label">Email</label>
                 <input type="email" name="members[${idx}][email]"
                        class="form-control form-control-sm" placeholder="Email">
             </div>
-            <div class="form-group" style="margin:0">
+            <div class="form-group">
+                <label class="mb-cell-label">Occupation</label>
                 <input type="text" name="members[${idx}][occupation]"
                        class="form-control form-control-sm" placeholder="Occupation">
             </div>
-            <div class="form-group" style="margin:0">
+            <div class="form-group">
+                <label class="mb-cell-label">Service</label>
                 <input type="text" name="members[${idx}][service_attended]" list="memberServiceOptions"
                        class="form-control form-control-sm" placeholder="Service"
                        value="${esc(document.getElementById('bulkService')?.value || '')}">
             </div>
-            <div class="form-group" style="margin:0">
+            <div class="form-group">
+                <label class="mb-cell-label">Status</label>
                 <select name="members[${idx}][status]" class="form-control form-control-sm">
                     <option>Active</option>
                     <option>Inactive</option>
                 </select>
             </div>
-            <div style="padding-top:4px">
+            <div class="mb-remove">
                 <button type="button" class="btn btn-danger btn-icon btn-sm remove-member-row"
                         title="Remove row" style="display:none">
                     <i class="fas fa-times"></i>
@@ -953,7 +971,7 @@ window.MEMBER_MODULE = {
     function refreshRowNumbers() {
         const rows = getAllRows();
         rows.forEach((row, i) => {
-            const numEl = row.querySelector('div:first-child');
+            const numEl = row.querySelector('.mb-num');
             if (numEl) numEl.textContent = i + 1;
             const rmBtn = row.querySelector('.remove-member-row');
             if (rmBtn) rmBtn.style.display = rows.length > 1 ? '' : 'none';
