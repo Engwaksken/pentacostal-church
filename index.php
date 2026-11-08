@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/login.php';
+require_once __DIR__ . '/includes/pwa.php';
 
 if (isset($_SESSION['user_id'])) {
     redirect(BASE_URL . 'dashboard.php');
@@ -34,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $site = get_login_site_settings($conn);
 $csrfToken = login_csrf_token();
+$pwaBrand = pwa_branding();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,6 +44,14 @@ $csrfToken = login_csrf_token();
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Login | <?= h($site['site_name']) ?></title>
+<link rel="manifest" href="<?= h(BASE_URL . 'manifest.webmanifest') ?>">
+<meta name="theme-color" content="<?= h($pwaBrand['theme_color']) ?>">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<?php if ($pwaBrand['apple_icon'] !== ''): ?>
+<link rel="apple-touch-icon" href="<?= h($pwaBrand['apple_icon']) ?>">
+<?php endif; ?>
+<script defer src="<?= h(BASE_URL . 'assets/js/pwa-install.js?v=' . (int)filemtime(__DIR__ . '/assets/js/pwa-install.js')) ?>"></script>
 
 <?php if ($site['favicon_url'] !== ''): ?>
 <link rel="icon" href="<?= h($site['favicon_url']) ?>">
@@ -81,6 +91,22 @@ $csrfToken = login_csrf_token();
   background: rgba(5, 100, 91, 0.08);
   outline: none;
 }
+.login-install { margin-top: 18px; }
+.login-install-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.login-install-button:hover { background: var(--primary-fade); }
+.login-install-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.login-install-help { margin-top: 10px; font-size: 13px; line-height: 1.6; text-align: left; }
 </style>
 <?= site_theme_css() ?></head>
 
@@ -159,6 +185,15 @@ $csrfToken = login_csrf_token();
         <i class="fa fa-sign-in-alt"></i> Sign In
       </button>
     </form>
+
+    <div class="login-install" id="loginInstall" hidden>
+      <button type="button" class="login-install-button" id="installApp"
+              data-service-worker="<?= h(BASE_URL . 'service-worker.js') ?>"
+              aria-controls="installHelp" aria-expanded="false">
+        <i class="fa fa-download" aria-hidden="true"></i> Install App
+      </button>
+      <p class="login-install-help" id="installHelp" role="status" hidden></p>
+    </div>
 
     <div class="login-footer">
       <p style="margin-top:6px;">
