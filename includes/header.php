@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/pwa.php';
 
 requireLogin();
 enforce_current_page_permission();
@@ -104,6 +105,7 @@ if (isset($conn) && $conn instanceof mysqli) {
 
 $faviconUrl = cms_asset_url($faviconPath);
 $logoUrl = cms_asset_url($siteLogo);
+$pwaBrand = pwa_branding();
 
 $pageTitleText = isset($pageTitle) && trim((string)$pageTitle) !== ''
     ? trim((string)$pageTitle) . ' | ' . $siteName
@@ -122,8 +124,6 @@ $pageTitleText = isset($pageTitle) && trim((string)$pageTitle) !== ''
 <link rel="shortcut icon" href="<?= h($faviconUrl) ?>">
 <?php endif; ?>
 
-<meta name="theme-color" content="#0d6efd">
-
 <?php if ($logoUrl !== ''): ?>
 <meta property="og:image" content="<?= h($logoUrl) ?>">
 <?php endif; ?>
@@ -131,11 +131,13 @@ $pageTitleText = isset($pageTitle) && trim((string)$pageTitle) !== ''
 <link rel="stylesheet" href="<?= h(BASE_URL . 'assets/css/style.css?v=' . (int) @filemtime(__DIR__ . '/../assets/css/style.css')) ?>">
 <?= site_theme_css() ?>
 <link rel="manifest" href="<?= h(BASE_URL . 'manifest.webmanifest') ?>">
-<meta name="theme-color" content="<?= h(preg_match('/^#[0-9a-fA-F]{6}$/', site_brand()['primary']) ? site_brand()['primary'] : '#4a1e8f') ?>">
+<meta name="theme-color" content="<?= h($pwaBrand['theme_color']) ?>">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="apple-touch-icon" href="<?= h(BASE_URL . 'assets/img/pwa-192.png') ?>">
+<?php if ($pwaBrand['apple_icon'] !== ''): ?>
+<link rel="apple-touch-icon" href="<?= h($pwaBrand['apple_icon']) ?>">
+<?php endif; ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 </head>

@@ -22,6 +22,14 @@ A PHP and MySQL application for managing church administration, finances, member
 3. Import the required schema from the SQL files in `database/` and configure the web server document root to this project.
 4. Sign in using an account provisioned in the database, then configure the site name and logo in Site Settings.
 
+## PWA branding
+
+The installable app uses the church logo and name from Site Settings, not the bundled PWA icons. Apache must allow the project's `.htaccess` rewrite rules so `manifest.webmanifest` serves the current settings.
+
+Enable PHP GD (with PNG/JPEG/WebP support) to generate square 192px and 512px install icons and a 180px Apple touch icon from uploaded logos. Without GD, or with an external logo URL, the original image is used; use a square image at least 512px wide for browser compatibility. No stock icon is supplied when no logo is configured.
+
+Existing installations may take time to refresh their icon. On devices that retain the old icon, remove the installed app and install it again after refreshing the site. Run `php tools/test-pwa.php` to check the branding helpers without a database.
+
 ## Reports and expenses
 
 Reports use the configured site name and logo in printable report output and PDF exports. Expenses can be recorded and reviewed from the Expenses section; they are included in the financial summary and expenditure report.

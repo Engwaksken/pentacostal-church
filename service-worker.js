@@ -1,11 +1,9 @@
-const CACHE_NAME = 'church-cms-shell-v1';
+const CACHE_NAME = 'church-cms-shell-v2';
 const SHELL_ASSETS = [
   '/offline.html',
   '/assets/css/style.css',
   '/assets/css/statistics.css',
-  '/assets/js/main.js',
-  '/assets/img/pwa-192.png',
-  '/assets/img/pwa-512.png'
+  '/assets/js/main.js'
 ];
 
 self.addEventListener('install', (event) => {

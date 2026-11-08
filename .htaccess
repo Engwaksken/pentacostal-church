@@ -6,6 +6,9 @@ RewriteRule (^|/)\.(?!well-known/) - [F,L]
 # cPanel PHP settings file.
 RewriteRule (^|/)php\.ini$ - [F,L,NC]
 
+# Keep the installed app's manifest URL stable while reading current admin branding.
+RewriteRule ^manifest\.webmanifest$ manifest.php [END]
+
 # Root entry point canonicalizes to the site root.
 RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
 RewriteCond %{THE_REQUEST} \s/+index\.php(?:[?\s]) [NC]
